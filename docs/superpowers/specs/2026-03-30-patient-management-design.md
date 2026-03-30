@@ -1738,3 +1738,206 @@ const patientList = await fetchPatients(deptId)
 - 患者详情支持打印功能
 - 卡片视图支持拖拽排序
 - 添加患者搜索历史记录
+
+---
+
+## 13. 边界情况与错误处理
+
+### 13.1 Null 安全检查
+
+**患者详情不存在：**
+```typescript
+const handleView = (patient: PatientListItem) => {
+  const detail = getPatientDetail(patient.id)
+  if (!detail) {
+    ElMessage.warning('患者数据不存在')
+    return
+  }
+  selectedPatient.value = detail
+  drawerVisible.value = true
+}
+```
+
+**患者列表为空：**
+```typescript
+const fetchPatients = async () => {
+  loading.value = true
+  try {
+    const deptId = authStore.currentDepartmentId
+    const patients = getPatientList(deptId)
+    // 即使为空数组，也正常显示空状态
+    patientList.value = patients || []
+  } catch (error) {
+    ElMessage.error('加载患者列表失败')
+    patientList.value = []  // 确保失败时也是空数组而非 undefined
+  } finally {
+    loading.value = false
+  }
+}
+```
+
+**生命体征历史为空：**
+```typescript
+// VitalTrendChart.vue 中添加空数据检查
+const chartOption = computed(() => {
+  if (!props.vitalsHistory || props.vitalsHistory.length < 2) {
+    // 数据不足时显示提示信息而非图表
+    return null
+  }
+  // 正常生成图表配置...
+})
+```
+
+模板中处理空图表：
+```vue
+<template>
+  <div v-if="chartOption">
+    <v-chart :option="chartOption" style="height: 200px" autoresize />
+  </div>
+  <div v-else class="empty-chart">
+    <el-empty description="暂无足够数据生成趋势图" :image-size="80" />
+  </div>
+</template>
+```
+
+### 13.2 交班按钮安全检查
+
+**详情抽屉底部按钮：**
+```typescript
+const handleDrawerHandover = () => {
+  if (!selectedPatient.value) {
+    ElMessage.warning('请先选择患者')
+    return
+  }
+  router.push(`/handovers/new?patientId=${selectedPatient.value.id}`)
+}
+```
+
+模板中：
+```vue
+<template #footer>
+  <el-button 
+    type="primary" 
+    :disabled="!selectedPatient" 
+    @click="handleDrawerHandover"
+  >
+    交班
+  </el-button>
+  <el-button @click="drawerVisible = false">关闭</el-button>
+</template>
+```
+
+### 13.3 数据有效性约束
+
+**Mock 数据生成时的数值范围约束：**
+```typescript
+function generateVitalsHistory(baseTemp: number = 36.5): VitalRecord[] {
+  // ...existing code...
+  records.push({
+    time: `${dateStr} ${String(hour).padStart(2, '0')}:00`,
+    // 约束数值范围
+    temperature: Math.max(35, Math.min(42, baseTemp + Math.random() * 1.5 - 0.5)),
+    pulse: Math.max(40, Math.min(120, 60 + Math.floor(Math.random() * 40))),
+    respiration: Math.max(10, Math.min(30, 16 + Math.floor(Math.random() * 8))),
+    systolicBp: Math.max(80, Math.min(200, 110 + Math.floor(Math.random() * 40))),
+    diastolicBp: Math.max(50, Math.min(120, 70 + Math.floor(Math.random() * 20))),
+    oxygenSaturation: Math.max(85, Math.min(100, 95 + Math.floor(Math.random() * 5)))
+  })
+  // ...
+}
+
+// 年龄范围约束
+function generatePatientAge(): number {
+  return Math.max(18, Math.min(100, 40 + Math.floor(Math.random() * 40)))
+}
+```
+
+### 13.4 路由验证
+
+**确保目标路由存在：**
+```typescript
+const handleHandover = (patient: PatientListItem) => {
+  // 验证路由存在
+  const targetRoute = router.resolve(`/handovers/new?patientId=${patient.id}`)
+  if (targetRoute.name) {
+    router.push(targetRoute.fullPath)
+  } else {
+    ElMessage.error('交班页面不存在，请联系管理员')
+  }
+}
+```
+
+### 13.5 authStore 属性验证
+
+**确保 authStore 有必要属性：**
+```typescript
+// 在 stores/auth.ts 中确保定义了以下属性
+interface AuthStore {
+  token: string | null
+  userInfo: UserInfo | null
+  currentDepartmentId: number      // 当前工作科室ID
+  currentDepartmentName: string    // 当前工作科室名称（默认显示）
+  // ...
+}
+
+// 使用时的安全访问
+const displayDeptName = computed(() => {
+  return authStore.currentDepartmentName || authStore.userInfo?.department || '未知科室'
+})
+```
+
+### 13.6 空状态展示
+
+**表格空状态：**
+```vue
+<el-table :data="paginatedPatients" v-loading="loading">
+  <!-- columns -->
+  <template #empty>
+    <el-empty description="暂无患者数据">
+      <el-button type="primary" size="small" @click="handleReset">清除筛选</el-button>
+    </el-empty>
+  </template>
+</el-table>
+```
+
+**卡片空状态：**
+```vue
+<div v-if="paginatedPatients.length === 0" class="empty-card">
+  <el-empty description="暂无患者数据">
+    <el-button type="primary" size="small" @click="handleReset">清除筛选</el-button>
+  </el-empty>
+</div>
+<div v-else class="card-grid">
+  <!-- cards -->
+</div>
+```
+
+### 13.7 错误消息统一
+
+**定义错误消息常量：**
+```typescript
+// constants/messages.ts
+export const ERROR_MESSAGES = {
+  PATIENT_NOT_FOUND: '患者数据不存在',
+  LOAD_FAILED: '加载患者列表失败',
+  ROUTE_NOT_FOUND: '页面不存在，请联系管理员',
+  NO_PATIENT_SELECTED: '请先选择患者',
+  INSUFFICIENT_DATA: '暂无足够数据生成趋势图'
+}
+```
+
+---
+
+## 14. 集成点验证清单
+
+实现前需验证以下依赖：
+
+| 检查项 | 文件/位置 | 验证方法 |
+|--------|-----------|----------|
+| vue-tsc 配置 | `package.json` scripts | 检查 `type-check` 命令是否存在 |
+| /handovers/new 路由 | `router/index.ts` | 检查路由配置是否有此路径 |
+| authStore 属性 | `stores/auth.ts` | 检查 `currentDepartmentId`、`currentDepartmentName` 是否定义 |
+| Element Plus 组件 | `main.ts` | 检查 el-drawer、el-timeline、el-empty 是否可用 |
+| 项目样式变量 | `styles/theme.css` | 检查 `--color-primary-DEFAULT`、`--text-primary` 等变量 |
+
+若以上检查项不存在，需在实现前补充配置。
