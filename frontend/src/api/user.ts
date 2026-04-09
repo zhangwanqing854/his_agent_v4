@@ -39,6 +39,7 @@ export function fetchUserById(id: number): Promise<ApiResponse<User | null>> {
 }
 
 export function createUserApi(data: {
+  usercode: string
   username: string
   password: string
   roleId: number
@@ -46,10 +47,10 @@ export function createUserApi(data: {
   enabled: boolean
 }): Promise<ApiResponse<User>> {
   if (USE_MOCK) {
-    if (checkUsernameExists(data.username)) {
+    if (checkUsercodeExists(data.usercode)) {
       return Promise.resolve({
         code: 1,
-        message: '用户名已存在',
+        message: '用户编码已存在',
         data: null as unknown as User
       })
     }

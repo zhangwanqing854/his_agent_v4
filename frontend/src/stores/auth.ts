@@ -42,11 +42,11 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    async login(usercode: string, password: string, captcha: string, captchaId: string): Promise<boolean> {
+    async login(usercode: string, password: string): Promise<boolean> {
       try {
         console.log('[Auth] login called with:', { usercode })
         
-        const response = await loginApi({ usercode, password, captcha, captchaId })
+        const response = await loginApi({ usercode, password })
         console.log('[Auth] loginApi response:', response)
         
         const data = response as { code: number; message: string; data: { token: string; userInfo: UserInfo } | null }
