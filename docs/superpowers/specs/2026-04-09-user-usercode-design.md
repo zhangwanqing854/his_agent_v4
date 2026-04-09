@@ -70,6 +70,19 @@ export interface LoginParams {
   usercode: string    // 改：原为 username
   password: string
 }
+
+// loginApi 函数签名
+export async function loginApi(params: LoginParams): Promise<ApiResponse<LoginResponse>> {
+  if (USE_MOCK) {
+    // mock 登录逻辑（不区分大小写）
+    const user = mockUsers.find(u =>
+      u.usercode.toLowerCase() === params.usercode.toLowerCase() &&
+      u.password === params.password
+    )
+    // ...
+  }
+  return request.post('/auth/login', params)
+}
 ```
 
 ### Auth Store (`stores/auth.ts`)
@@ -108,10 +121,25 @@ const user = mockUsers.find(u =>
 
 ### 登录页面 (`views/Login.vue`)
 
-- 输入框 label 改为"用户编码"
-- loginForm 字段名：`username` → `usercode`
-- 提交调用：`authStore.login(loginForm.usercode, loginForm.password)`
-- 错误提示文案：将"账号"相关提示改为"用户编码"
+```typescript
+// loginForm 定义
+const loginForm = reactive({
+  usercode: '',   // 改：原为 username
+  password: ''
+})
+
+// 输入框绑定
+<el-input v-model="loginForm.usercode" placeholder="请输入用户编码" />
+<el-input v-model="loginForm.password" type="password" />
+
+// 提交调用
+const handleLogin = async () => {
+  await authStore.login(loginForm.usercode, loginForm.password)
+}
+```
+
+- 输入框 label/placeholder 改为"用户编码"
+- 错误提示：`ElMessage.error('用户编码或密码错误')`（原为"账号或密码错误"）
 
 ### 用户管理列表 (`views/UserManagement.vue`)
 
@@ -197,10 +225,41 @@ export function checkUsercodeExists(usercode: string, excludeId?: number): boole
 
 ---
 
+## 数据迁移策略
+
+### 现有数据处理
+
+数据库迁移时需处理现有用户的 usercode 值：
+
+```sql
+-- 1. 添加字段（允许临时 NULL）
+ALTER TABLE user ADD COLUMN usercode VARCHAR(50);
+
+-- 2. 为现有用户填充 usercode（从 username 或 hisStaff.staffCode）
+UPDATE user SET usercode = LOWER(username) WHERE usercode IS NULL AND his_staff_id IS NULL;
+UPDATE user u SET usercode = LOWER(hs.staff_code) 
+FROM his_staff hs WHERE u.his_staff_id = hs.id AND u.usercode IS NULL;
+
+-- 3. 添加唯一约束（NOT NULL + UNIQUE）
+ALTER TABLE user MODIFY COLUMN usercode VARCHAR(50) NOT NULL;
+ALTER TABLE user ADD CONSTRAINT uk_user_usercode UNIQUE (usercode);
+```
+
+### 现有 Mock 数据填充
+
+为 5 个现有 mock 用户补充 usercode：
+- admin → usercode: "admin"（从 username 复制）
+- D001 用户 → usercode: "d001"（从 hisStaff.staffCode）
+- D002 用户 → usercode: "d002"
+- D003 用户 → usercode: "d003"
+- sysadmin → usercode: "sysadmin"
+
+---
+
 ## 后端待实现（Spring Boot）
 
 1. User 实体添加 usercode 字段
-2. 数据库迁移：ALTER TABLE user ADD COLUMN usercode VARCHAR(50) UNIQUE
+2. 数据库迁移：按上述策略执行
 3. 登录接口改为 usercode 验证（LOWER 比较）
 4. 创建/更新接口添加 usercode 唯一性校验（LOWER 比较）
 5. HIS 同步接口：code_user 映射到 usercode
@@ -209,9 +268,37 @@ export function checkUsercodeExists(usercode: string, excludeId?: number): boole
 
 ## 测试要点
 
-1. 新用户创建：usercode 必填校验
-2. usercode 重复校验：不区分大小写
-3. 登录功能：usercode 登录，不区分大小写
-4. HIS 同步：code_user 正确映射到 usercode
-5. 用户列表：usercode 列正确显示
-6. 用户编辑：usercode 字段可修改且校验生效
+### 功能测试
+
+1. **新用户创建**
+   - usercode 为空时，提示"请输入用户编码"
+   - usercode 唯一性校验生效
+
+2. **usercode 重复校验（不区分大小写）**
+   - 已存在 usercode="Admin"，新建输入 "admin" → 提示"用户编码已存在"
+   - 已存在 usercode="Admin"，新建输入 "ADMIN" → 提示"用户编码已存在"
+   - 编辑时排除自身：编辑 usercode="admin" 的用户，输入 "admin" → 允许（排除自身）
+
+3. **登录功能**
+   - 输入 "admin"/正确密码 → 登录成功
+   - 输入 "ADMIN"/正确密码 → 登录成功
+   - 输入 "Admin"/正确密码 → 登录成功
+   - 输入 "wrongcode"/正确密码 → 提示"用户编码或密码错误"
+
+4. **HIS 同步**
+   - HIS 返回 `{ code_user: "HIS001", name: "张三" }` → 新建用户 usercode="his001"
+   - 同步已存在用户时更新 usercode
+
+5. **用户列表**
+   - usercode 列正确显示
+   - 列顺序正确：用户编码 → 昵称 → 角色...
+
+6. **用户编辑**
+   - usercode 字段可修改
+   - 唯一性校验生效
+
+### 边界测试
+
+- usercode 长度限制（建议 2-50 字符）
+- usercode 格式（允许字母、数字、下划线）
+- 空字符串校验
