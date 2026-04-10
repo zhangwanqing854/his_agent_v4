@@ -1,5 +1,5 @@
 import request from './request'
-import { mockUsers } from '@/mock/user'
+import { users as mockUsers } from '@/mock/user'
 
 export interface Department {
   id: number
@@ -27,13 +27,13 @@ export interface LoginResponse {
   }
 }
 
-const USE_MOCK = true
+const USE_MOCK = false
 
 export function getCaptchaApi() {
   return request.get('/auth/captcha')
 }
 
-export async function loginApi(params: LoginParams): Promise<ApiResponse<LoginResponse>> {
+export async function loginApi(params: LoginParams): Promise<{ code: number; message: string; data: LoginResponse | null }> {
   if (USE_MOCK) {
     const user = mockUsers.find(u =>
       u.usercode.toLowerCase() === params.usercode.toLowerCase() &&
@@ -41,14 +41,14 @@ export async function loginApi(params: LoginParams): Promise<ApiResponse<LoginRe
     )
     
     if (!user) {
-      return Promise.resolve({
+      return {
         code: 1,
         message: '用户编码或密码错误',
-        data: null as unknown as LoginResponse
-      })
+        data: null
+      }
     }
     
-    return Promise.resolve({
+    return {
       code: 0,
       message: '登录成功',
       data: {
@@ -62,9 +62,9 @@ export async function loginApi(params: LoginParams): Promise<ApiResponse<LoginRe
           departments: []
         }
       }
-    })
+    }
   }
-  return request.post<LoginResponse>('/auth/login', params)
+  return request.post('/api/auth/login', params)
 }
 
 export function logoutApi() {
