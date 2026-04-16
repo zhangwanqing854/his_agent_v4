@@ -57,7 +57,7 @@ mvn compile -DskipTests
 mysql -u root -p
 
 -- 创建用户和数据库
-CREATE DATABASE IF NOT EXISTS handover_system;
+CREATE DATABASE IF NOT EXISTS handover_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS 'handover'@'localhost' IDENTIFIED BY 'handover123';
 GRANT ALL PRIVILEGES ON handover_system.* TO 'handover'@'localhost';
 FLUSH PRIVILEGES;
@@ -65,25 +65,63 @@ FLUSH PRIVILEGES;
 
 ### 4.2 恢复数据
 
+#### 方法一：使用还原脚本（推荐）
+
 ```bash
-# 从备份文件恢复
-mysql -u handover -phandover123 handover_system < database/backup_2026-04-16_handover_system_full.sql
+cd database_backup
+./restore_database.sh
+```
+
+脚本会自动使用最新的备份文件，并在还原前提示确认。
+
+#### 方法二：指定备份文件还原
+
+```bash
+./restore_database.sh handover_system_backup_20260416_155503.sql
+```
+
+#### 方法三：手动还原
+
+```bash
+# 删除并重建数据库
+mysql -u handover -phandover123 -e "DROP DATABASE IF EXISTS handover_system;"
+mysql -u handover -phandover123 -e "CREATE DATABASE handover_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 导入备份
+mysql -u handover -phandover123 handover_system < database_backup/handover_system_backup_20260416_155503.sql
 ```
 
 ### 4.3 验证数据库
 
-```sql
+```bash
+# 检查表数量（应为 30 个）
+mysql -u handover -phandover123 handover_system -e "SHOW TABLES;" | tail -n +2 | wc -l
+
+# 查看所有表
 mysql -u handover -phandover123 -e "USE handover_system; SHOW TABLES;"
 ```
 
-应显示以下核心表：
+应显示 30 个表，包括：
 - `shift_handover`
 - `handover_patient`
 - `department`
 - `his_staff`
 - `sms_config`
 - `sms_log`
+- `voice_session`
 - 等...
+
+### 4.4 备份文件位置
+
+| 文件 | 大小 | 说明 |
+|-----|------|-----|
+| `database_backup/handover_system_backup_20260416_155503.sql` | 2.5MB | 完整备份，30个表 |
+
+### 4.5 创建新备份
+
+```bash
+mysqldump -u handover -phandover123 handover_system > database_backup/handover_system_backup_$(date +%Y%m%d_%H%M%S).sql
+```
 
 ---
 
@@ -296,10 +334,10 @@ his_agent_v4/
 │   └ package.json
 │   └ vite.config.ts
 │
-├── database/                   # 数据库脚本
-│   ├── backup_2026-04-16_*.sql # 完整备份
-│   ├── schema_v2*.sql          # 增量脚本
-│   └ BACKUP_README.md          # 恢复说明
+├── database_backup/              # 数据库备份目录
+│   ├── handover_system_backup_*.sql  # 完整备份（2.5MB，30表）
+│   ├── restore_database.sh       # 还原脚本
+│   └ README.md                   # 备份说明
 │
 ├── openspec/                   # OpenSpec 变更记录
 │   ├── changes/archive/        # 已归档变更
@@ -330,4 +368,5 @@ his_agent_v4/
 
 - GitHub: https://github.com/zhangwanqing854/his_agent_v4
 - 备份日期: 2026-04-16
-- 数据库备份: `database/backup_2026-04-16_handover_system_full.sql`
+- 数据库备份: `database_backup/handover_system_backup_20260416_155503.sql`
+- 还原脚本: `database_backup/restore_database.sh`
