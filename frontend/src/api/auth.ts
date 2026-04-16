@@ -1,4 +1,5 @@
 import request from './request'
+import type { ApiResponse } from './request'
 import { users as mockUsers } from '@/mock/user'
 
 export interface Department {
@@ -15,25 +16,27 @@ export interface LoginParams {
   captchaId?: string
 }
 
+export interface UserInfo {
+  id: number
+  username: string
+  name: string
+  role: string
+  avatar: string
+  departments: Department[]
+}
+
 export interface LoginResponse {
   token: string
-  userInfo: {
-    id: number
-    username: string
-    name: string
-    role: string
-    avatar: string
-    departments: Department[]
-  }
+  userInfo: UserInfo
 }
 
 const USE_MOCK = false
 
-export function getCaptchaApi() {
-  return request.get('/auth/captcha')
+export function getCaptchaApi(): Promise<ApiResponse<any>> {
+  return request.get('/auth/captcha') as Promise<ApiResponse<any>>
 }
 
-export async function loginApi(params: LoginParams): Promise<{ code: number; message: string; data: LoginResponse | null }> {
+export async function loginApi(params: LoginParams): Promise<ApiResponse<LoginResponse>> {
   if (USE_MOCK) {
     const user = mockUsers.find(u =>
       u.usercode.toLowerCase() === params.usercode.toLowerCase() &&
@@ -44,7 +47,7 @@ export async function loginApi(params: LoginParams): Promise<{ code: number; mes
       return {
         code: 1,
         message: '用户编码或密码错误',
-        data: null
+        data: null as any
       }
     }
     
@@ -64,13 +67,13 @@ export async function loginApi(params: LoginParams): Promise<{ code: number; mes
       }
     }
   }
-  return request.post('/api/auth/login', params)
+  return request.post('/auth/login', params) as Promise<ApiResponse<LoginResponse>>
 }
 
-export function logoutApi() {
-  return request.post('/auth/logout')
+export function logoutApi(): Promise<ApiResponse<void>> {
+  return request.post('/auth/logout') as Promise<ApiResponse<void>>
 }
 
-export function getCurrentUserApi() {
-  return request.get('/auth/me')
+export function getCurrentUserApi(): Promise<ApiResponse<UserInfo>> {
+  return request.get('/auth/me') as Promise<ApiResponse<UserInfo>>
 }

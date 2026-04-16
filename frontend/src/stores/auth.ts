@@ -11,6 +11,7 @@ export interface Department {
 
 export interface UserInfo {
   id: number
+  hisStaffId: number | null
   username: string
   name: string
   role: string
@@ -22,7 +23,8 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: localStorage.getItem('token') || '',
     userInfo: null as UserInfo | null,
-    currentDepartmentId: Number(localStorage.getItem('currentDepartmentId')) || null as number | null
+    currentDepartmentId: Number(localStorage.getItem('currentDepartmentId')) || null as number | null,
+    currentDepartmentCode: localStorage.getItem('currentDepartmentCode') || ''
   }),
 
   getters: {
@@ -42,66 +44,97 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    async login(usercode: string, password: string): Promise<boolean> {
-      try {
-        console.log('[Auth] login called with:', { usercode })
-        
-        const response = await loginApi({ usercode, password })
-        console.log('[Auth] loginApi response:', response)
-        
-        const data = response as { code: number; message: string; data: { token: string; userInfo: UserInfo } | null }
-        
-        if (data.code !== 0) {
-          throw new Error(data.message || '登录失败')
-        }
-        
-        if (!data.data) {
-          throw new Error('登录数据为空')
-        }
-        
-        this.token = data.data.token
-        localStorage.setItem('token', data.data.token)
-        this.userInfo = data.data.userInfo
-        
-        if (this.userInfo?.departments?.length) {
-          const primaryDept = this.userInfo.departments.find((d: Department) => d.isPrimary)
-          const firstDept = this.userInfo.departments[0]
-          this.currentDepartmentId = primaryDept?.id ?? firstDept?.id ?? null
-          if (this.currentDepartmentId) {
-            localStorage.setItem('currentDepartmentId', String(this.currentDepartmentId))
-          }
-        }
-        
-        console.log('[Auth] login success, token saved')
-        return true
-      } catch (error) {
-        ElMessage.error('用户编码或密码错误')
-        return false
+async login(usercode: string, password: string): Promise<boolean> {
+  try {
+    console.log('[Auth] login called with:', { usercode })
+    
+    const response = await loginApi({ usercode, password })
+    console.log('[Auth] loginApi response:', response)
+    
+    if (response.code !== 0) {
+      throw new Error(response.message || '登录失败')
+    }
+    
+    if (!response.data) {
+      throw new Error('登录数据为空')
+    }
+    
+    this.token = response.data.token
+    localStorage.setItem('token', response.data.token)
+    this.userInfo = response.data.userInfo
+    
+    if (this.userInfo?.departments?.length) {
+      const primaryDept = this.userInfo.departments.find((d: Department) => d.isPrimary)
+      const firstDept = this.userInfo.departments[0]
+      this.currentDepartmentId = primaryDept?.id ?? firstDept?.id ?? null
+      this.currentDepartmentCode = primaryDept?.code ?? firstDept?.code ?? ''
+      
+      if (this.currentDepartmentId) {
+        localStorage.setItem('currentDepartmentId', String(this.currentDepartmentId))
       }
-    },
+      if (this.currentDepartmentCode) {
+        localStorage.setItem('currentDepartmentCode', this.currentDepartmentCode)
+      }
+    }
+    
+    console.log('[Auth] login success, token saved, deptId:', this.currentDepartmentId)
+    return true
+  } catch (error) {
+    console.error('[Auth] login error:', error)
+    ElMessage.error('用户编码或密码错误')
+    return false
+  }
+},
 
-    async fetchUserInfo() {
-      const response = await getCurrentUserApi()
-      const data = response as { code: number; data: UserInfo }
-      this.userInfo = data.data
+async fetchUserInfo() {
+  console.log('[Auth] fetchUserInfo called')
+  try {
+    const response = await getCurrentUserApi()
+    console.log('[Auth] fetchUserInfo response:', response)
+    
+    if (response && response.code === 0 && response.data) {
+      this.userInfo = response.data
       
       if (!this.currentDepartmentId && this.userInfo?.departments?.length) {
         const primaryDept = this.userInfo.departments.find((d: Department) => d.isPrimary)
         const firstDept = this.userInfo.departments[0]
         this.currentDepartmentId = primaryDept?.id ?? firstDept?.id ?? null
+        this.currentDepartmentCode = primaryDept?.code ?? firstDept?.code ?? ''
+        
         if (this.currentDepartmentId) {
           localStorage.setItem('currentDepartmentId', String(this.currentDepartmentId))
         }
+        if (this.currentDepartmentCode) {
+          localStorage.setItem('currentDepartmentCode', this.currentDepartmentCode)
+        }
       }
-    },
+      console.log('[Auth] fetchUserInfo done, currentDepartmentId:', this.currentDepartmentId)
+    } else {
+      console.error('[Auth] fetchUserInfo failed:', response)
+    }
+  } catch (e) {
+    console.error('[Auth] fetchUserInfo error:', e)
+  }
+},
 
     switchDepartment(departmentId: number) {
       if (!this.userInfo?.departments?.some((d: Department) => d.id === departmentId)) {
         console.warn('用户不属于该科室，无法切换')
         return
       }
+      
+      const dept = this.userInfo?.departments?.find((d: Department) => d.id === departmentId)
+      if (!dept) {
+        console.warn('找不到科室信息')
+        return
+      }
+      
       this.currentDepartmentId = departmentId
+      this.currentDepartmentCode = dept.code
       localStorage.setItem('currentDepartmentId', String(departmentId))
+      localStorage.setItem('currentDepartmentCode', dept.code)
+      
+      console.log('[Auth] switched to department:', dept.name, 'code:', dept.code)
     },
 
     async logout() {
@@ -111,8 +144,10 @@ export const useAuthStore = defineStore('auth', {
         this.token = ''
         this.userInfo = null
         this.currentDepartmentId = null
+        this.currentDepartmentCode = ''
         localStorage.removeItem('token')
         localStorage.removeItem('currentDepartmentId')
+        localStorage.removeItem('currentDepartmentCode')
       }
     }
   }

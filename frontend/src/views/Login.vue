@@ -60,13 +60,10 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
-import { loginApi } from '@/api/auth'
 
-const router = useRouter()
 const authStore = useAuthStore()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -96,18 +93,27 @@ const handleLogin = async () => {
   loading.value = true
   console.log('[Login] calling authStore.login...')
   
-try {
-    await authStore.login(
+  try {
+    const success = await authStore.login(
       loginForm.usercode,
       loginForm.password
     )
-    console.log('[Login] login success, redirecting...')
+    
+    if (!success) {
+      // 登录失败，authStore.login 已经显示了错误消息
+      loading.value = false
+      return
+    }
+    
+    console.log('[Login] login success')
     ElMessage.success('登录成功')
-    router.push('/')
+    
+    // 登录成功后，App.vue 会检测到 isLoggedIn 变化并触发同步
+    // 这里只需要结束 loading 状态
+    loading.value = false
   } catch (error: any) {
     console.error('[Login] login error:', error)
     ElMessage.error(error.message || '登录失败')
-  } finally {
     loading.value = false
   }
 }

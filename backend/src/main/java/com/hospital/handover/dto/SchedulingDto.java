@@ -1,0 +1,49 @@
+package com.hospital.handover.dto;
+
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+
+public class SchedulingDto {
+    
+    private Long id;
+    private Long departmentId;
+    private String departmentName;
+    private String yearMonth;
+    private String status;
+    private Long createdBy;
+    private String createdByName;
+    private String createdAt;
+    private String updatedAt;
+    private List<SchedulingDetailDto> details = new ArrayList<>();
+    
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    
+    public Long getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
+    
+    public String getDepartmentName() { return departmentName; }
+    public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
+    
+    public String getYearMonth() { return yearMonth; }
+    public void setYearMonth(String yearMonth) { this.yearMonth = yearMonth; }
+    
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    
+    public Long getCreatedBy() { return createdBy; }
+    public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    
+    public String getCreatedByName() { return createdByName; }
+    public void setCreatedByName(String createdByName) { this.createdByName = createdByName; }
+    
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+    
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+    
+    public List<SchedulingDetailDto> getDetails() { return details; }
+    public void setDetails(List<SchedulingDetailDto> details) { this.details = details; }
+}

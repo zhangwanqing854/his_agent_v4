@@ -1,0 +1,1 @@
+ALTER TABLE shift_handover ADD COLUMN reject_reason VARCHAR(500) NULL;

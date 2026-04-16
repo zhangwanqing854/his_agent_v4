@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build outputs
+backend/target/
+frontend/dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Logs
+*.log
+backend/backend.log
+
+# Environment
+.env
+.env.local
+*.pem
+frontend/cert.pem
+frontend/key.pem
+
+# Cache
+.cache/
+
+# Test coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Claude/OpenCode settings (keep for new machine)
+# .claude/
+# .opencode/

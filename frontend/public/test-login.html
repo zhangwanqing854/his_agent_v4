@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>登录测试</title>
+</head>
+<body>
+    <h2>登录测试页面</h2>
+    <form id="loginForm">
+        <p>
+            <label>用户名: <input type="text" id="username" value="doctor1"></label>
+        </p>
+        <p>
+            <label>密码: <input type="password" id="password" value="123456"></label>
+        </p>
+        <p>
+            <button type="submit">登录</button>
+        </p>
+    </form>
+    <hr>
+    <h3>结果:</h3>
+    <pre id="result"></pre>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const result = document.getElementById('result');
+            
+            result.textContent = '登录中...';
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                result.textContent = JSON.stringify(data, null, 2);
+                
+                if (data.code === 0) {
+                    localStorage.setItem('token', data.data.token);
+                    result.textContent += '\n\n✅ 登录成功！Token 已保存到 localStorage';
+                } else {
+                    result.textContent += '\n\n❌ 登录失败: ' + data.message;
+                }
+            } catch (err) {
+                result.textContent = '错误: ' + err.message;
+            }
+        });
+    </script>
+</body>
+</html>

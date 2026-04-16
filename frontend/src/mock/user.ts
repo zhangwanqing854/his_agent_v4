@@ -103,7 +103,7 @@ export const hisStaffList = [
 ]
 
 // 用户数据
-let users: User[] = [
+export let users: User[] = [
   {
     id: 1,
     usercode: 'admin',

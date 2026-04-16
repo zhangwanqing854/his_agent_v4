@@ -1,0 +1,703 @@
+schema: spec-driven
+
+# 项目上下文
+# 医院医护智能交接班质量管理系统 - 技术栈与领域知识
+context: |
+  系统名称：北京大学国际医院智能交接班管理系统
+  
+  技术栈：
+  - 前端：Vue 3 + TypeScript + Vite
+  - 后端：Spring Boot 3 + JDK 17
+  - 数据库：MySQL 8.0
+  - 缓存：Redis 7.x
+  - ORM：MyBatis-Plus
+  
+  系统架构：前后端分离
+  
+  核心功能模块：
+  1. 智能交接班核心功能
+     - 患者信息自动聚合（基本信息、诊断、过敏史、手术史、检验检查异常值）
+     - 病情动态摘要（AI 生成 24 小时病情变化摘要）
+     - 重点患者标记（危重/术后/新入院/特殊治疗患者高亮提醒）
+     - 待办事项清单（医嘱待执行项、检查预约、会诊安排）
+     - 风险预警提示（MEWS、压疮、跌倒等评分系统自动预警）
+  
+  2. AI 辅助决策功能
+     - 智能质控引擎（完整性检查、关键信息遗漏检测、术语标准化校验）
+     - 时间逻辑校验（医嘱时间与执行时间冲突检测）
+     - 护理记录与交班记录一致性比对
+  
+  3. 语音交互与录入
+     - 语音交班录入（自然语言口述转结构化文本）
+     - 语音指令控制
+     - 语音质控（关键要素缺失检测）
+  
+  4. 质量评估与分析
+     - 交接班质量评分（完整性、准确性、及时性、规范性、重点突出性）
+     - 数据分析看板（趋势分析、问题统计、时长分析、不良事件关联分析）
+  
+  5. 安全与追溯机制
+     - 双因素身份认证
+     - 操作留痕与版本管理
+     - 电子签名确认
+     - 异常行为监控
+  
+  6. 系统对接
+     - HIS 系统（患者信息）
+     - LIS 系统（检验数据）
+     - PACS 系统（影像数据）
+     - 护理系统（护理记录）
+     - 移动端（床旁交班、拍照上传、即时通讯）
+  
+  7. 特色 AI 功能
+     - 智能追问（模糊内容自动提示补充）
+     - 相似病例推荐
+     - 交班助手（标准模板推送）
+  
+  领域知识：
+  - 医院交接班流程规范
+  - 医疗术语标准化（ICD 诊断编码、药品通用名）
+  - 护理分级制度
+  - 危急值管理流程
+  - 医疗数据安全与隐私保护要求
+
+# 每个工件的规则
+rules:
+  proposal:
+    - 保持提案在 500 字以内
+    - 始终包含"非目标"部分
+    - 明确标注与 HIS/LIS/PACS 系统的对接点
+  tasks:
+    - 将任务分解为最多 2 小时的块
+    - 标注任务所属功能模块
+    - 数据库变更需单独列出
+
+# 测试配置
+testing:
+  # 单元测试配置
+  unitTest:
+    enabled: false
+    # 前端单元测试
+    frontend:
+      framework: vitest
+      coverage:
+        enabled: true
+        threshold: 80
+      commands:
+        run: "cd frontend && npm run test:unit"
+        coverage: "cd frontend && npm run test:coverage"
+      # 测试文件位置
+      testDir: "frontend/src/__tests__"
+      # 测试文件命名规则
+      pattern: "**/*.spec.ts"
+    # 后端单元测试
+    backend:
+      framework: junit5
+      coverage:
+        enabled: true
+        threshold: 80
+      commands:
+        run: "cd backend && ./mvnw test"
+        coverage: "cd backend && ./mvnw jacoco:report"
+      testDir: "backend/src/test/java"
+    
+    # 单元测试规则
+    rules:
+      - 每个任务实现完成后，必须运行相关单元测试
+      - 新增代码必须有对应的单元测试
+      - 单元测试必须覆盖核心业务逻辑
+      - 测试通过率必须达到 100%
+      - 代码覆盖率不低于阈值（默认 80%）
+
+  # 接口自动化测试配置
+  apiTest:
+    enabled: false
+    framework: "restassured"
+    
+    # 测试用例配置
+    testCases:
+      # 测试用例保存位置
+      outputDir: "tests/api"
+      # 测试用例文件格式
+      format: "json|yaml"
+      # 命名规则
+      naming: "{module}_{api}_{scenario}.json"
+    
+    # 测试环境配置
+    environment:
+      baseUrl: "http://localhost:8080"
+      timeout: 30000
+    
+    # 测试用例生成规则
+    generation:
+      # 自动生成测试用例
+      autoGenerate: true
+      # 根据接口文档生成
+      fromOpenApi: true
+      openApiPath: "docs/api/openapi.yaml"
+      # 根据任务描述生成
+      fromTask: true
+    
+    # 测试用例内容要求
+    content:
+      # 每个接口至少包含以下场景
+      scenarios:
+        - name: "正常场景"
+          description: "参数正确，预期返回成功"
+          required: true
+        - name: "参数校验"
+          description: "必填参数缺失、格式错误等"
+          required: true
+        - name: "边界值"
+          description: "空值、最大值、最小值等边界情况"
+          required: false
+        - name: "权限校验"
+          description: "未登录、无权限访问等"
+          required: true
+        - name: "异常处理"
+          description: "服务异常、数据不存在等"
+          required: false
+    
+    # 测试用例保存规则
+    save:
+      # 测试执行后自动保存用例
+      autoSave: true
+      # 保存执行结果
+      saveResult: true
+      resultDir: "tests/api/results"
+      # 历史记录保留天数
+      retentionDays: 30
+    
+    # 接口测试规则
+    rules:
+      - 每个新增接口必须生成对应的测试用例
+      - 测试用例必须包含正常和异常场景
+      - 测试用例必须保存到指定目录
+      - 接口变更时必须同步更新测试用例
+      - 测试通过率必须达到 100%
+
+# 启动配置
+startup:
+  # 启动前清理端口和进程
+  cleanup:
+    enabled: true
+    # 端口清理配置
+    ports:
+      - port: 8080
+        processName: "java"
+        description: "Spring Boot 后端服务"
+      - port: 3000
+        processName: "node"
+        description: "Vite 前端开发服务器"
+    # 清理策略
+    strategy:
+      # 先尝试优雅停止（发送 SIGTERM）
+      gracefulFirst: true
+      # 优雅停止超时（秒）
+      gracefulTimeout: 5
+      # 优雅停止失败后强制杀死（发送 SIGKILL）
+      forceKill: true
+
+# 任务执行配置
+execution:
+  # 执行模式：严格顺序执行
+  mode: "sequential"
+  
+  # 任务状态流转
+  workflow:
+    states:
+      - pending      # 待执行
+      - in_progress  # 执行中
+      - testing      # 测试中
+      - failed       # 失败
+      - passed       # 通过
+      - completed    # 完成
+    
+    transitions:
+      - from: pending
+        to: in_progress
+        action: "开始执行任务"
+      - from: in_progress
+        to: testing
+        action: "任务实现完成，进入测试阶段"
+      - from: testing
+        to: passed
+        action: "测试通过"
+      - from: testing
+        to: failed
+        action: "测试失败"
+      - from: failed
+        to: in_progress
+        action: "修正问题后重新执行"
+      - from: passed
+        to: completed
+        action: "任务完成"
+
+  # 执行规则
+  rules:
+    # 必须按顺序执行，前一个任务完成后才能执行下一个
+    - rule: "sequential_execution"
+      description: "任务必须按顺序执行"
+      enforcement: "strict"
+    
+    # 测试通过才能进入下一个任务（已禁用）
+    # - rule: "test_gate"
+    #   description: "当前任务测试必须全部通过才能进入下一个任务"
+    #   enforcement: "strict"
+    #   conditions:
+    #     unitTest: "passed"
+    #     apiTest: "passed"
+
+  # 失败处理
+  failureHandling:
+    # 测试失败时的行为
+    onTestFailure:
+      # 自动修正尝试次数
+      maxRetries: 3
+      # 修正策略
+      strategy: "auto_fix"
+      actions:
+        - step: 1
+          action: "analyze_failure"
+          description: "分析测试失败原因"
+        - step: 2
+          action: "fix_code"
+          description: "自动修正代码问题"
+        - step: 3
+          action: "rerun_test"
+          description: "重新运行测试"
+        - step: 4
+          action: "verify_fix"
+          description: "验证修正是否解决问题"
+    
+    # 超过最大重试次数后的行为
+    onMaxRetriesExceeded:
+      action: "escalate"
+      description: "升级处理，请求人工介入"
+
+  # 执行命令
+  commands:
+    # 执行单个任务
+    runTask: "openspec-cn run-task {taskId}"
+    # 运行单元测试
+    runUnitTest: "openspec-cn test --type unit {taskId}"
+    # 运行接口测试
+    runApiTest: "openspec-cn test --type api {taskId}"
+    # 运行所有测试
+    runAllTests: "openspec-cn test --all {taskId}"
+    # 生成测试报告
+    generateReport: "openspec-cn report {taskId}"
+
+# 前后端启动命令
+startCommands:
+  frontend:
+    dev: "cd frontend && npm run dev"
+    build: "cd frontend && npm run build"
+  backend:
+    start: "cd backend && ./mvnw spring-boot:run"
+    stop: "pkill -f 'handover-system'"
+
+# 排查问题配置
+debugging:
+  # 排查日志规则
+  logging:
+    # 启用排查日志
+    enabled: false
+    
+    # 日志保存位置
+    outputDir: "logs/debug"
+    
+    # 日志内容要求
+    content:
+      # 必须记录的信息
+      required:
+        - 问题现象描述
+        - 排查步骤（检查了哪些文件/位置）
+        - 发现的原因或推理过程
+        - 修复方案（如有）
+        - 验证结果
+      
+      # 可选信息
+      optional:
+        - 相关代码片段
+        - 错误堆栈
+        - 环境信息
+    
+    # 日志格式
+    format: |
+      ## 排查日志 - {timestamp}
+      
+      ### 问题描述
+      {problem_description}
+      
+      ### 排查步骤
+      1. {step_1}
+      2. {step_2}
+      ...
+      
+      ### 发现
+      {findings}
+      
+      ### 解决方案
+      {solution}
+      
+      ### 验证结果
+      {verification_result}
+    
+    # 日志保留
+    retention:
+      # 保留天数
+      days: 30
+      # 最大日志数
+      maxFiles: 100
+
+# 质量门禁
+qualityGates:
+  # 代码质量
+  codeQuality:
+    # 无编译错误
+    noCompileErrors: true
+    # 无 TypeScript 类型错误
+    noTypeErrors: true
+    # 无 Lint 错误
+    noLintErrors: true
+    # Lint 命令
+    lintCommand:
+      frontend: "cd frontend && npm run lint"
+      backend: "cd backend && ./mvnw checkstyle:check"
+  
+  # 测试质量（已禁用）
+  testQuality:
+    # 单元测试必须通过
+    unitTestPassed: false
+    # 接口测试必须通过
+    apiTestPassed: false
+    # 测试覆盖率阈值
+    coverageThreshold: 0
+  
+  # 安全检查
+  security:
+    # 无已知安全漏洞
+    noVulnerabilities: true
+    # 依赖检查命令
+    auditCommand:
+      frontend: "cd frontend && npm audit"
+      backend: "cd backend && ./mvnw dependency-check:check"
+
+# 报告配置
+reports:
+  # 测试报告
+  test:
+    outputDir: "reports/tests"
+    format: "html|json|junit"
+    includeCoverage: true
+  
+  # 执行报告
+  execution:
+    outputDir: "reports/execution"
+    format: "markdown|html"
+    includeHistory: true
+
+# 前后端联动开发配置
+frontendToBackend:
+  enabled: true
+  
+  # 前端界面到后端接口的映射规则
+  mapping:
+    # 自动识别前端界面中的 API 调用
+    autoDetectApi: true
+    # 前端 API 文件位置
+    frontendApiDir: "frontend/src/api"
+    # 后端 Controller 生成位置
+    backendControllerDir: "backend/src/main/java/com/hospital/controller"
+    # 后端 Service 生成位置
+    backendServiceDir: "backend/src/main/java/com/hospital/service"
+    # 后端 Mapper 生成位置
+    backendMapperDir: "backend/src/main/java/com/hospital/mapper"
+  
+  # 接口生成流程
+  workflow:
+    # 流程步骤
+    steps:
+      - step: 1
+        name: "analyze_frontend"
+        description: "分析前端界面，识别 API 需求"
+        actions:
+          - "扫描前端 Vue 组件"
+          - "识别 API 调用"
+          - "提取请求参数和响应结构"
+      
+      - step: 2
+        name: "design_api"
+        description: "设计后端接口"
+        actions:
+          - "生成 OpenAPI 文档"
+          - "设计数据模型"
+          - "设计接口签名"
+      
+      - step: 3
+        name: "generate_backend"
+        description: "生成后端代码"
+        actions:
+          - "生成 Controller"
+          - "生成 Service 接口和实现"
+          - "生成 Mapper"
+          - "生成实体类"
+      
+      - step: 4
+        name: "generate_test"
+        description: "生成单元测试"
+        actions:
+          - "生成 Controller 单元测试"
+          - "生成 Service 单元测试"
+          - "生成集成测试"
+      
+      - step: 5
+        name: "run_test"
+        description: "运行单元测试"
+        actions:
+          - "执行单元测试"
+          - "检查测试覆盖率"
+          - "验证接口正确性"
+      
+      - step: 6
+        name: "verify_complete"
+        description: "验证接口完成"
+        actions:
+          - "启动后端服务"
+          - "前端调用验证"
+          - "记录测试结果"
+    
+    # 状态流转
+    states:
+      - pending        # 待生成
+      - analyzing      # 分析中
+      - designing      # 设计中
+      - generating     # 生成代码中
+      - testing        # 测试中
+      - failed         # 测试失败
+      - passed         # 测试通过
+      - completed      # 完成
+    
+    transitions:
+      - from: pending
+        to: analyzing
+        action: "开始分析前端界面"
+      - from: analyzing
+        to: designing
+        action: "分析完成，开始设计接口"
+      - from: designing
+        to: generating
+        action: "设计完成，开始生成代码"
+      - from: generating
+        to: testing
+        action: "代码生成完成，开始测试"
+      - from: testing
+        to: passed
+        action: "测试通过"
+      - from: testing
+        to: failed
+        action: "测试失败"
+      - from: failed
+        to: generating
+        action: "修正代码后重新生成"
+      - from: passed
+        to: completed
+        action: "接口生成完成"
+  
+  # 单接口生成规则
+  singleApi:
+    # 每个接口必须独立测试通过
+    testRequired: true
+    # 测试通过才能生成下一个接口
+    sequentialGeneration: true
+    
+    # 单元测试配置
+    unitTest:
+      enabled: false
+      # 测试类型
+      types:
+        - name: "ControllerTest"
+          description: "Controller 层单元测试"
+          dir: "backend/src/test/java/com/hospital/controller"
+          template: "ControllerTestTemplate.java"
+        - name: "ServiceTest"
+          description: "Service 层单元测试"
+          dir: "backend/src/test/java/com/hospital/service"
+          template: "ServiceTestTemplate.java"
+        - name: "IntegrationTest"
+          description: "集成测试"
+          dir: "backend/src/test/java/com/hospital/integration"
+          template: "IntegrationTestTemplate.java"
+      
+      # 测试覆盖率要求
+      coverage:
+        controller: 80
+        service: 80
+        overall: 75
+      
+      # 测试命令
+      commands:
+        runSingle: "cd backend && ./mvnw test -Dtest={TestClassName}"
+        runAll: "cd backend && ./mvnw test"
+        coverage: "cd backend && ./mvnw jacoco:report"
+    
+    # 测试失败处理
+    onFailure:
+      # 最大重试次数
+      maxRetries: 3
+      # 自动修正策略
+      autoFix:
+        enabled: true
+        actions:
+          - step: 1
+            action: "analyze_error"
+            description: "分析测试失败原因"
+          - step: 2
+            action: "fix_code"
+            description: "修正后端代码"
+          - step: 3
+            action: "fix_test"
+            description: "修正测试代码（如测试用例有误）"
+          - step: 4
+            action: "rerun_test"
+            description: "重新运行测试"
+          - step: 5
+            action: "verify_pass"
+            description: "验证测试通过"
+      
+      # 超过重试次数后的行为
+      onMaxRetriesExceeded:
+        action: "stop_and_report"
+        description: "停止生成，报告错误等待人工处理"
+  
+  # 批量接口生成规则
+  batchApi:
+    # 是否启用批量生成
+    enabled: true
+    # 批量生成时的执行策略
+    strategy: "sequential_per_api"
+    # 每个接口独立验证
+    independentValidation: true
+    
+    # 批量生成流程
+    process:
+      - step: 1
+        name: "collect_apis"
+        description: "收集所有待生成接口"
+      - step: 2
+        name: "sort_by_dependency"
+        description: "按依赖关系排序"
+      - step: 3
+        name: "generate_one_by_one"
+        description: "逐个生成接口"
+        subSteps:
+          - "生成单个接口代码"
+          - "生成单元测试"
+          - "运行单元测试"
+          - "验证测试通过"
+          - "通过后继续下一个"
+      - step: 4
+        name: "verify_all"
+        description: "验证所有接口"
+      - step: 5
+        name: "generate_report"
+        description: "生成报告"
+    
+    # 失败处理
+    onFailure:
+      # 某个接口失败时的行为
+      action: "stop_at_failure"
+      description: "在失败的接口处停止，修正后继续"
+      # 记录已生成的接口
+      saveProgress: true
+      progressFile: "backend/.generation_progress.json"
+  
+  # 前端界面与后端接口对应关系
+  interfaceMapping:
+    # 患者管理界面
+    - frontend: "PatientManagement.vue"
+      backendApis:
+        - path: "/api/patients"
+          method: "GET"
+          description: "获取患者列表"
+          testRequired: true
+        - path: "/api/patients/{id}"
+          method: "GET"
+          description: "获取患者详情"
+          testRequired: true
+    
+    # 交班管理界面
+    - frontend: "HandoverManagement.vue"
+      backendApis:
+        - path: "/api/handovers"
+          method: "GET"
+          description: "获取交班列表"
+          testRequired: true
+        - path: "/api/handovers"
+          method: "POST"
+          description: "创建交班记录"
+          testRequired: true
+        - path: "/api/handovers/{id}"
+          method: "GET"
+          description: "获取交班详情"
+          testRequired: true
+        - path: "/api/handovers/{id}/accept"
+          method: "POST"
+          description: "接受交班"
+          testRequired: true
+    
+    # 待办事项界面
+    - frontend: "TodoList.vue"
+      backendApis:
+        - path: "/api/todos"
+          method: "GET"
+          description: "获取待办事项列表"
+          testRequired: true
+        - path: "/api/todos/{id}/complete"
+          method: "PUT"
+          description: "完成待办事项"
+          testRequired: true
+    
+    # 统计分析界面
+    - frontend: "Statistics.vue"
+      backendApis:
+        - path: "/api/statistics/overview"
+          method: "GET"
+          description: "获取统计概览"
+          testRequired: true
+        - path: "/api/statistics/risk-distribution"
+          method: "GET"
+          description: "获取风险分布数据"
+          testRequired: true
+  
+  # 生成命令
+  commands:
+    # 分析前端界面
+    analyzeFrontend: "openspec-cn analyze-frontend {frontendFile}"
+    # 生成单个接口
+    generateApi: "openspec-cn generate-api --frontend {frontendFile} --api {apiPath}"
+    # 生成接口测试
+    generateTest: "openspec-cn generate-test --api {apiPath}"
+    # 运行接口测试
+    runTest: "openspec-cn test-api {apiPath}"
+    # 验证接口
+    verifyApi: "openspec-cn verify-api {apiPath}"
+    # 批量生成
+    batchGenerate: "openspec-cn batch-generate --frontend {frontendFile}"
+    # 查看生成进度
+    showProgress: "openspec-cn generation-progress"
+
+  # 质量门禁
+  qualityGates:
+    # 单元测试必须通过（已禁用）
+    unitTestPassed: false
+    # 测试覆盖率达标（已禁用）
+    coverageMet: false
+    # 代码无编译错误
+    noCompileErrors: true
+    # 代码风格检查通过
+    styleCheckPassed: true
+    # API 文档已生成
+    apiDocGenerated: false
+  
