@@ -51,9 +51,7 @@
         </el-form-item>
       </el-form>
 
-      <div class="login-tips">
-        <p>默认账号：<strong>admin</strong> / <strong>admin</strong></p>
-      </div>
+      
     </div>
   </div>
 </template>
@@ -69,8 +67,8 @@ const formRef = ref<FormInstance>()
 const loading = ref(false)
 
 const loginForm = reactive({
-  usercode: 'admin',
-  password: 'admin'
+  usercode: '',
+  password: ''
 })
 
 const rules: FormRules = {
