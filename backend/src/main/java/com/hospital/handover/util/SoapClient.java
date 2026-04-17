@@ -43,25 +43,101 @@ public class SoapClient {
         
         logger.info("SOAP Request to {}: {}", url, soapEnvelope);
         
-        HttpURLConnection connection = createConnection(url, timeoutMs);
+        HttpURLConnection connection;
+        try {
+            connection = createConnection(url, timeoutMs);
+        } catch (java.net.SocketTimeoutException e) {
+            throw new Exception("HIS接口连接超时，请稍后重试或检查网络连接");
+        } catch (java.net.ConnectException e) {
+            throw new Exception("无法连接到HIS接口服务，请确认接口地址正确且服务正在运行");
+        } catch (java.net.UnknownHostException e) {
+            throw new Exception("HIS接口地址无法解析，请检查网络或接口配置");
+        } catch (Exception e) {
+            throw new Exception("HIS接口连接失败：" + e.getMessage());
+        }
         
         try (OutputStream os = connection.getOutputStream()) {
             os.write(soapEnvelope.getBytes(StandardCharsets.UTF_8));
             os.flush();
+        } catch (java.net.SocketTimeoutException e) {
+            throw new Exception("HIS接口请求超时，数据量较大或网络不稳定");
+        } catch (Exception e) {
+            throw new Exception("HIS接口请求发送失败：" + e.getMessage());
         }
         
-        int responseCode = connection.getResponseCode();
+        int responseCode;
+        try {
+            responseCode = connection.getResponseCode();
+        } catch (Exception e) {
+            throw new Exception("HIS接口无响应，请检查服务状态");
+        }
+        
         if (responseCode != 200) {
-            String errorMessage = readErrorResponse(connection);
-            throw new RuntimeException("SOAP request failed with code " + responseCode + ": " + errorMessage);
+            String errorMessage = "";
+            try {
+                errorMessage = readErrorResponse(connection);
+                logger.error("SOAP error response: {}", errorMessage);
+            } catch (Exception e) {
+                errorMessage = "无法读取错误详情";
+            }
+            
+            String friendlyMessage;
+            switch (responseCode) {
+                case 400:
+                    friendlyMessage = "HIS接口请求格式错误，请检查接口参数配置";
+                    break;
+                case 401:
+                    friendlyMessage = "HIS接口认证失败，请检查访问权限配置";
+                    break;
+                case 403:
+                    friendlyMessage = "HIS接口拒绝访问，请确认授权配置";
+                    break;
+                case 404:
+                    friendlyMessage = "HIS接口地址不存在，请确认接口路径正确";
+                    break;
+                case 500:
+                    friendlyMessage = "HIS接口内部错误，请联系管理员检查HIS服务";
+                    break;
+                case 503:
+                    friendlyMessage = "HIS接口服务暂时不可用，请稍后重试";
+                    break;
+                default:
+                    friendlyMessage = "HIS接口返回异常状态(" + responseCode + ")";
+            }
+            throw new Exception(friendlyMessage);
         }
         
-        String response = readResponse(connection);
+        String response;
+        try {
+            response = readResponse(connection);
+        } catch (Exception e) {
+            throw new Exception("HIS接口响应数据读取失败：" + e.getMessage());
+        }
+        
         logger.info("SOAP Response: {}", response.length() > 500 ? response.substring(0, 500) + "..." : response);
         
-        String jsonData = extractJsonFromSoapResponse(response);
+        String jsonData;
+        try {
+            jsonData = extractJsonFromSoapResponse(response);
+        } catch (Exception e) {
+            throw new Exception("HIS接口返回数据格式异常，无法解析业务数据");
+        }
+        
+        if (jsonData == null || jsonData.trim().isEmpty()) {
+            throw new Exception("HIS接口返回数据为空，暂无同步数据");
+        }
+        
         jsonData = decodeHtmlEntities(jsonData);
-        return objectMapper.readTree(jsonData);
+        
+        JsonNode result;
+        try {
+            result = objectMapper.readTree(jsonData);
+        } catch (Exception e) {
+            logger.error("JSON parse error for data: {}", jsonData.length() > 200 ? jsonData.substring(0, 200) + "..." : jsonData);
+            throw new Exception("HIS接口返回数据解析失败，数据格式不正确");
+        }
+        
+        return result;
     }
     
     public static boolean testSoapConnection(String url, String soapAction, String soapNamespace, 
@@ -70,11 +146,22 @@ public class SoapClient {
             String soapEnvelope = buildSoapEnvelope(soapAction, soapNamespace, soapParams);
             logger.info("SOAP Test Request to {}: {}", url, soapEnvelope);
             
-            HttpURLConnection connection = createConnection(url, timeoutMs);
+            HttpURLConnection connection;
+            try {
+                connection = createConnection(url, timeoutMs);
+            } catch (java.net.SocketTimeoutException e) {
+                throw new RuntimeException("HIS接口连接超时，请检查网络或接口地址");
+            } catch (java.net.ConnectException e) {
+                throw new RuntimeException("无法连接到HIS接口服务，请确认地址正确且服务运行");
+            } catch (java.net.UnknownHostException e) {
+                throw new RuntimeException("HIS接口地址无法解析，请检查接口配置");
+            }
             
             try (OutputStream os = connection.getOutputStream()) {
                 os.write(soapEnvelope.getBytes(StandardCharsets.UTF_8));
                 os.flush();
+            } catch (java.net.SocketTimeoutException e) {
+                throw new RuntimeException("HIS接口请求超时，请稍后重试");
             }
             
             int responseCode = connection.getResponseCode();
@@ -84,11 +171,18 @@ public class SoapClient {
                 String response = readResponse(connection);
                 logger.info("SOAP Test Response length: {}", response.length());
                 return true;
+            } else if (responseCode == 404) {
+                throw new RuntimeException("HIS接口地址不存在，请确认接口路径");
+            } else if (responseCode >= 500) {
+                throw new RuntimeException("HIS接口服务异常，请检查HIS服务状态");
+            } else {
+                throw new RuntimeException("HIS接口返回异常状态(" + responseCode + ")");
             }
-            return false;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             logger.error("SOAP Test failed: {}", e.getMessage());
-            throw new RuntimeException("SOAP连接失败: " + e.getMessage(), e);
+            throw new RuntimeException("HIS接口测试失败：" + e.getMessage());
         }
     }
     

@@ -123,9 +123,45 @@ public class SyncService {
                 TIMEOUT_MS
             );
 
-            if (responseData == null || !responseData.isArray()) {
-                result.setSuccess(false);
-                result.setMessage("接口返回数据格式错误");
+            if (responseData == null) {
+                result.setSuccess(true);
+                result.setMessage("HIS接口返回空数据，本次同步无新增数据");
+                totalCount = 0;
+                config.setLastSyncTime(LocalDateTime.now());
+                config.setLastSyncStatus("SUCCESS");
+                config.setLastSyncCount(0);
+                if (config.getIsFirstSync()) {
+                    config.setIsFirstSync(false);
+                }
+                configRepository.save(config);
+                return result;
+            }
+
+            if (!responseData.isArray()) {
+                result.setSuccess(true);
+                result.setMessage("HIS接口返回数据格式非数组，但同步完成");
+                totalCount = 0;
+                config.setLastSyncTime(LocalDateTime.now());
+                config.setLastSyncStatus("SUCCESS");
+                config.setLastSyncCount(0);
+                if (config.getIsFirstSync()) {
+                    config.setIsFirstSync(false);
+                }
+                configRepository.save(config);
+                return result;
+            }
+
+            if (responseData.size() == 0) {
+                result.setSuccess(true);
+                result.setMessage("同步成功，本次查询无新数据");
+                totalCount = 0;
+                config.setLastSyncTime(LocalDateTime.now());
+                config.setLastSyncStatus("SUCCESS");
+                config.setLastSyncCount(0);
+                if (config.getIsFirstSync()) {
+                    config.setIsFirstSync(false);
+                }
+                configRepository.save(config);
                 return result;
             }
 
@@ -166,11 +202,28 @@ public class SyncService {
             result.setMessage("同步成功");
 
         } catch (Exception e) {
-            logger.error("同步失败", e);
+            logger.error("同步失败: configId={}, error={}", configId, e.getMessage(), e);
+            
+            String friendlyMessage;
+            if (e.getMessage() != null) {
+                friendlyMessage = e.getMessage();
+            } else {
+                friendlyMessage = "同步过程中发生未知错误，请稍后重试";
+            }
+            
             result.setSuccess(false);
-            result.setMessage("同步失败：" + e.getMessage());
-            errorMessage = e.getMessage();
+            result.setMessage(friendlyMessage);
+            errorMessage = friendlyMessage;
             failCount = 1;
+            
+            Optional<InterfaceConfig> failedConfigOpt = configRepository.findById(configId);
+            if (failedConfigOpt.isPresent()) {
+                InterfaceConfig failedConfig = failedConfigOpt.get();
+                failedConfig.setLastSyncTime(LocalDateTime.now());
+                failedConfig.setLastSyncStatus("FAILED");
+                failedConfig.setLastSyncCount(0);
+                configRepository.save(failedConfig);
+            }
         }
 
         long durationMs = System.currentTimeMillis() - startMillis;
