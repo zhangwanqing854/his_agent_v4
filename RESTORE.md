@@ -217,7 +217,7 @@ HTTPS 地址：https://localhost:3000
 测试账号：
 | 用户编码 | 密码 | 角色 |
 |---------|------|-----|
-| admin | admin123 | 管理员 |
+| admin | admin | 管理员 |
 | doctor1 | doctor123 | 医生 |
 
 ### 8.2 API 测试
