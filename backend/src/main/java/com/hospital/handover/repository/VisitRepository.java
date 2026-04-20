@@ -40,4 +40,6 @@ public interface VisitRepository extends JpaRepository<Visit, Long> {
            "AND v.dischargeDatetime >= :cutoffTime AND v.fgIp = 'N'")
     Integer countDischarge24h(@Param("deptId") Long departmentId, 
                               @Param("cutoffTime") LocalDateTime cutoffTime);
+    
+    List<Visit> findByDepartmentIdAndPatientStatus(Long departmentId, String patientStatus);
 }

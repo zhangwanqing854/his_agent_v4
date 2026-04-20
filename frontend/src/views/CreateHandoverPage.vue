@@ -41,7 +41,7 @@
           </div>
           <div class="form-item">
             <label>接班医生 <span class="required">*</span></label>
-            <el-select v-model="form.toDoctorId" placeholder="请选择接班医生" style="width: 200px">
+            <el-select v-model="form.toDoctorId" placeholder="请选择接班医生" style="width: 200px" filterable>
               <el-option
                 v-for="doctor in doctorList"
                 :key="doctor.id"
@@ -57,25 +57,40 @@
       <div class="stats-section">
         <div class="stats-row">
           <div class="stat-item primary">
-            <span class="stat-label">患者总数</span>
-            <span class="stat-value">{{ stats.totalPatients }}人</span>
+            <span class="stat-label">全科患者</span>
+            <span class="stat-value">{{ stats.totalNum }}人</span>
+          </div>
+          <div class="stat-item warning">
+            <span class="stat-label">危重患者</span>
+            <span class="stat-value">{{ stats.diseNum }}人</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">入院</span>
-            <span class="stat-value">{{ stats.admission }}人</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">转出</span>
-            <span class="stat-value">{{ stats.transferOut }}人</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">出院</span>
-            <span class="stat-value">{{ stats.discharge }}人</span>
+            <span class="stat-label">新入院</span>
+            <span class="stat-value">{{ stats.newInHos }}人</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">转入</span>
-            <span class="stat-value">{{ stats.transferIn }}人</span>
+            <span class="stat-value">{{ stats.transIn }}人</span>
           </div>
+          <div class="stat-item">
+            <span class="stat-label">转出</span>
+            <span class="stat-value">{{ stats.transOut }}人</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">今日出院</span>
+            <span class="stat-value">{{ stats.outNum }}人</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">今日手术</span>
+            <span class="stat-value">{{ stats.surgNum }}人</span>
+          </div>
+          <div class="stat-item danger">
+            <span class="stat-label">死亡</span>
+            <span class="stat-value">{{ stats.deathNum }}人</span>
+          </div>
+        </div>
+        <div v-if="deptPatientOverview?.syncedAt" class="sync-time">
+          数据同步时间：{{ new Date(deptPatientOverview.syncedAt).toLocaleString('zh-CN') }}
         </div>
       </div>
 
@@ -121,43 +136,43 @@
               <el-tag v-if="row.filterReason" type="warning" size="small">{{ row.filterReason }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="生命体征" min-width="200">
+          <el-table-column label="生命体征" min-width="100">
             <template #default="{ row }">
               <el-input
                 v-model="row.vitals"
                 type="textarea"
-                :rows="3"
+                autosize
                 placeholder="请输入生命体征..."
                 resize="none"
                 @blur="savePatientField(row, 'vitals')"
               />
             </template>
           </el-table-column>
-          <el-table-column label="目前情况" min-width="200">
+          <el-table-column label="目前情况" min-width="250">
             <template #default="{ row }">
               <el-input
                 v-model="row.currentCondition"
                 type="textarea"
-                :rows="3"
+                autosize
                 placeholder="请输入目前情况..."
                 resize="none"
                 @blur="savePatientField(row, 'currentCondition')"
               />
             </template>
           </el-table-column>
-          <el-table-column label="需观察项" min-width="180">
+          <el-table-column label="需观察项" min-width="90">
             <template #default="{ row }">
               <el-input
                 v-model="row.observationItems"
                 type="textarea"
-                :rows="3"
+                autosize
                 placeholder="请输入需观察项..."
                 resize="none"
                 @blur="savePatientField(row, 'observationItems')"
               />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="60" align="center" fixed="right">
+          <el-table-column label="操作" width="140" align="center" fixed="right">
             <template #default="{ row }">
               <el-button 
                 type="primary" 
@@ -166,6 +181,20 @@
                 size="small"
                 @click="openInlineVoice(row)"
               />
+              <el-button 
+                type="success" 
+                size="small"
+                @click="openExamReport(row)"
+              >
+                检查
+              </el-button>
+              <el-button 
+                type="warning" 
+                size="small"
+                @click="openTestReport(row)"
+              >
+                检验
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -198,10 +227,12 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft, Check, Document, Setting, User, Microphone } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { fetchHandoverStats, fetchDutyStaff, fetchHandoverPatientsForCreate, createHandover, fetchHandoverById, fetchHandoverPatients, updateHandoverPatient, type HandoverStatsDto, type DutyStaffDto, type HandoverPatientDto } from '@/api/handover'
+import { fetchDeptPatientOverview, type DeptPatientOverview } from '@/api/deptPatientOverview'
 import type { HandoverForm } from '@/types/patient'
 import VoiceInputDialog from '@/components/handover/VoiceInputDialog.vue'
 import ReportPreview from '@/components/handover/ReportPreview.vue'
 import { generatePreviewData, type PrintableReport } from '@/mocks/handoverPrintData'
+import { fetchSystemConfig, type SystemConfig } from '@/api/systemConfig'
 
 const router = useRouter()
 const route = useRoute()
@@ -216,6 +247,8 @@ const showPreviewDialog = ref(false)
 const previewData = ref<PrintableReport | null>(null)
 const noDutyStaffMsg = ref('')
 const inlineVoicePatient = ref<any>(null)
+const deptPatientOverview = ref<DeptPatientOverview | null>(null)
+const systemConfig = ref<SystemConfig | null>(null)
 
 interface Doctor {
   id: number
@@ -224,12 +257,15 @@ interface Doctor {
 
 const doctorList = ref<Doctor[]>([])
 
-const stats = reactive<HandoverStatsDto>({
-  totalPatients: 0,
-  admission: 0,
-  transferOut: 0,
-  discharge: 0,
-  transferIn: 0
+const stats = reactive({
+  totalNum: 0,
+  diseNum: 0,
+  newInHos: 0,
+  transIn: 0,
+  transOut: 0,
+  outNum: 0,
+  surgNum: 0,
+  deathNum: 0
 })
 
 const form = reactive<HandoverForm>({
@@ -238,12 +274,14 @@ const form = reactive<HandoverForm>({
   toDoctorId: null,
   patients: [],
   stats: {
-    admission: 0,
-    transferOut: 0,
-    discharge: 0,
-    transferIn: 0,
-    death: 0,
-    surgery: 0
+    totalNum: 0,
+    diseNum: 0,
+    newInHos: 0,
+    transIn: 0,
+    transOut: 0,
+    outNum: 0,
+    surgNum: 0,
+    deathNum: 0
   }
 })
 
@@ -262,13 +300,64 @@ const voiceDialogPatients = computed(() => {
 })
 
 const loadStats = async () => {
-  const deptId = authStore.currentDepartmentId
-  if (deptId) {
-    const res = await fetchHandoverStats(deptId)
-    if (res.code === 0) {
-      Object.assign(stats, res.data)
+  const deptCode = authStore.currentDepartmentCode
+  if (deptCode) {
+    try {
+      const res = await fetchDeptPatientOverview(deptCode)
+      if (res.data) {
+        deptPatientOverview.value = res.data
+        stats.totalNum = res.data.totalNum || 0
+        stats.diseNum = res.data.diseNum || 0
+        stats.newInHos = res.data.newInHos || 0
+        stats.transIn = res.data.transIn || 0
+        stats.transOut = res.data.transOut || 0
+        stats.outNum = res.data.outNum || 0
+        stats.surgNum = res.data.surgNum || 0
+        stats.deathNum = res.data.deathNum || 0
+      }
+    } catch {
+      stats.totalNum = 0
+      stats.diseNum = 0
+      stats.newInHos = 0
+      stats.transIn = 0
+      stats.transOut = 0
+      stats.outNum = 0
+      stats.surgNum = 0
+      stats.deathNum = 0
+      deptPatientOverview.value = null
     }
   }
+}
+
+const loadSystemConfig = async () => {
+  try {
+    const res = await fetchSystemConfig()
+    if (res.data) {
+      systemConfig.value = res.data
+    }
+  } catch (error) {
+    console.error('加载系统配置失败:', error)
+  }
+}
+
+const openExamReport = (row: any) => {
+  if (!systemConfig.value?.EXAM_REPORT_URL) {
+    ElMessage.warning('检查报告URL未配置')
+    return
+  }
+  const url = systemConfig.value.EXAM_REPORT_URL.replace('{{:patient_no}}', row.patientNo)
+  window.open(url, '_blank')
+}
+
+const openTestReport = (row: any) => {
+  if (!systemConfig.value?.TEST_REPORT_URL) {
+    ElMessage.warning('检验报告URL未配置')
+    return
+  }
+  const url = systemConfig.value.TEST_REPORT_URL
+    .replace('{{:patient_no}}', row.patientNo)
+    .replace('{{:userId}}', authStore.userCode || '')
+  window.open(url, '_blank')
 }
 
 const loadDutyStaff = async () => {
@@ -307,11 +396,13 @@ const loadPatients = async () => {
         gender: p.gender,
         diagnosis: p.diagnosis,
         isCritical: false,
-        vitals: '',
+        vitals: p.vitals || '',
         currentCondition: p.currentCondition || '',
         observationItems: '',
         filterReason: p.filterReason,
-        visitId: p.visitId
+        visitId: p.visitId,
+        visitNo: p.visitNo,
+        patientNo: p.patientNo
       }))
     }
   }
@@ -321,7 +412,7 @@ const handleVoiceApply = (results: any[]) => {
   results.forEach(result => {
     const patient = form.patients.find(p => p.id === result.patientId)
     if (patient) {
-      patient.currentCondition = result.mergedContent || result.newContent
+      patient.observationItems = result.mergedContent || result.newContent
     }
   })
 }
@@ -331,7 +422,7 @@ const handleBatchVoiceApply = (items: any[]) => {
     const patientId = item.selectedPatientId || item.matchResult?.patientId
     const patient = form.patients.find(p => p.id === patientId)
     if (patient) {
-      patient.currentCondition = item.parsedItem?.content || ''
+      patient.observationItems = item.parsedItem?.content || ''
     }
   })
 }
@@ -351,11 +442,11 @@ const handleInlineVoiceApply = async (content: string) => {
   if (inlineVoicePatient.value) {
     const patient = form.patients.find(p => p.id === inlineVoicePatient.value.id)
     if (patient) {
-      patient.currentCondition = content
+      patient.observationItems = content
       if (isEditMode.value && handoverId.value) {
-        await savePatientField(patient, 'currentCondition')
+        await savePatientField(patient, 'observationItems')
       }
-      ElMessage.success(`已录入${patient.bedNumber} ${patient.name}的目前情况`)
+      ElMessage.success(`已录入${patient.bedNumber} ${patient.name}的需观察项`)
     }
   }
   inlineVoicePatient.value = null
@@ -397,10 +488,14 @@ const handlePreview = () => {
       id: p.id,
       bedNumber: p.bedNumber,
       name: p.name,
+      age: p.age,
+      gender: p.gender,
       diagnosis: p.diagnosis,
-      condition: p.currentCondition
+      condition: p.currentCondition,
+      vitals: p.vitals,
+      observationItems: p.observationItems
     })),
-    stats: { ...form.stats, totalPatients: form.patients.length }
+    stats: { ...stats }
   })
   previewData.value = data
   showPreviewDialog.value = true
@@ -480,6 +575,7 @@ const handleSubmit = async () => {
 }
 
 onMounted(async () => {
+  loadSystemConfig()
   if (isEditMode.value && handoverId.value) {
     await loadExistingHandover(handoverId.value)
   } else {
@@ -696,6 +792,13 @@ const loadExistingHandover = async (id: number) => {
   align-items: center;
 }
 
+.sync-time {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #909399;
+  text-align: right;
+}
+
 .stat-item {
   display: flex;
   align-items: center;
@@ -747,6 +850,15 @@ const loadExistingHandover = async (id: number) => {
   border-radius: var(--radius-md);
 }
 
+.patient-table .el-table__body tr {
+  height: auto;
+}
+
+.patient-table .el-table__body td {
+  height: auto;
+  padding: 8px 0;
+}
+
 .patient-table .el-table__header th {
   background: #fafafa !important;
 }
@@ -759,6 +871,21 @@ const loadExistingHandover = async (id: number) => {
   border-radius: 20px;
   font-size: 13px;
   font-weight: 500;
+}
+
+.vitals-display {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.vitals-content {
+  white-space: pre-line;
+  color: #303133;
+}
+
+.vitals-empty {
+  color: #909399;
+  font-size: 12px;
 }
 
 .patient-name {

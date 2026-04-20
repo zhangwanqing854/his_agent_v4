@@ -1,10 +1,10 @@
 <template>
   <div class="print-wrap">
     <div class="toolbar">
-      <el-select v-model="m1" placeholder="第一月份" style="width:150px">
+      <el-select v-model="m1" placeholder="第一月份" style="width:150px" filterable>
         <el-option v-for="i in list" :key="i.id" :label="ym(i.yearMonth)" :value="i.id" />
       </el-select>
-      <el-select v-model="m2" placeholder="第二月份" style="width:150px" clearable>
+      <el-select v-model="m2" placeholder="第二月份" style="width:150px" clearable filterable>
         <el-option v-for="i in list" :key="i.id" :label="ym(i.yearMonth)" :value="i.id" />
       </el-select>
       <el-button type="primary" @click="print" :disabled="!m1">打印</el-button>

@@ -39,7 +39,7 @@
           权限配置
         </div>
         <el-form-item label="角色" prop="roleId">
-          <el-select v-model="form.roleId" placeholder="请选择角色" :disabled="isEdit && isSuperAdmin">
+          <el-select v-model="form.roleId" placeholder="请选择角色" :disabled="isEdit && isSuperAdmin" filterable>
             <el-option
               v-for="role in roleList"
               :key="role.id"

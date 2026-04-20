@@ -32,7 +32,7 @@
       </div>
 
       <el-table
-        :data="filteredList"
+        :data="paginatedDepartments"
         style="width: 100%"
         class="dept-table"
         :header-cell-style="{ background: '#fafafa', color: '#303133', fontWeight: '600' }"
@@ -61,6 +61,18 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :page-sizes="pagination.pageSizes"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </div>
 
     <el-dialog
@@ -118,12 +130,35 @@ const formData = reactive({
   bedCount: 0
 })
 
+const pagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 0,
+  pageSizes: [10, 20, 50, 100]
+})
+
 const filteredList = computed(() => {
   return deptList.value.filter(dept => {
     if (filter.name && !dept.name.includes(filter.name)) return false
     return true
   })
 })
+
+const paginatedDepartments = computed(() => {
+  const start = (pagination.page - 1) * pagination.pageSize
+  const end = start + pagination.pageSize
+  pagination.total = filteredList.value.length
+  return filteredList.value.slice(start, end)
+})
+
+const handlePageChange = (page: number) => {
+  pagination.page = page
+}
+
+const handleSizeChange = (size: number) => {
+  pagination.pageSize = size
+  pagination.page = 1
+}
 
 const loadDeptList = async () => {
   try {
@@ -286,5 +321,13 @@ onMounted(() => {
 .name-text {
   font-weight: 500;
   color: var(--text-primary);
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
 }
 </style>

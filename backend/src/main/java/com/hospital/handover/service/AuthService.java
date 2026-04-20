@@ -68,6 +68,7 @@ public class AuthService {
         userInfo.setId(user.getId());
         userInfo.setHisStaffId(user.getHisStaffId());
         userInfo.setUsername(user.getUsername());
+        userInfo.setUsercode(user.getUsercode());
         userInfo.setName(getUserName(user));
         userInfo.setRole(roleCode.toLowerCase());
         userInfo.setAvatar("");
@@ -92,6 +93,7 @@ public class AuthService {
         userInfo.setId(user.getId());
         userInfo.setHisStaffId(user.getHisStaffId());
         userInfo.setUsername(user.getUsername());
+        userInfo.setUsercode(user.getUsercode());
         userInfo.setName(getUserName(user));
         userInfo.setRole(roleCode.toLowerCase());
         userInfo.setAvatar("");

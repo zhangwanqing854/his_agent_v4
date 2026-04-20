@@ -114,7 +114,7 @@
         <el-tab-pane label="职责管理" name="duties">
           <div class="filter-bar">
             <div class="filter-left">
-              <el-select v-model="dutyFilter.permissionId" placeholder="按权限筛选" clearable style="width: 180px">
+              <el-select v-model="dutyFilter.permissionId" placeholder="按权限筛选" clearable style="width: 180px" filterable>
                 <el-option
                   v-for="perm in permissionList"
                   :key="perm.id"

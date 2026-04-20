@@ -33,6 +33,7 @@ public class HandoverService {
     private final HandoverTodoRepository handoverTodoRepository;
     private final SmsNotificationService smsNotificationService;
     private final HandoverNoGenerator handoverNoGenerator;
+    private final VitalSignRepository vitalSignRepository;
 
     public HandoverService(ShiftHandoverRepository shiftHandoverRepository,
                           HandoverPatientRepository handoverPatientRepository,
@@ -48,7 +49,8 @@ public class HandoverService {
                           HisStaffRepository hisStaffRepository,
                           HandoverTodoRepository handoverTodoRepository,
                           SmsNotificationService smsNotificationService,
-                          HandoverNoGenerator handoverNoGenerator) {
+                          HandoverNoGenerator handoverNoGenerator,
+                          VitalSignRepository vitalSignRepository) {
         this.shiftHandoverRepository = shiftHandoverRepository;
         this.handoverPatientRepository = handoverPatientRepository;
         this.visitRepository = visitRepository;
@@ -64,6 +66,7 @@ public class HandoverService {
         this.handoverTodoRepository = handoverTodoRepository;
         this.smsNotificationService = smsNotificationService;
         this.handoverNoGenerator = handoverNoGenerator;
+        this.vitalSignRepository = vitalSignRepository;
     }
 
     public List<HandoverDto> getHandoverList(Long deptId) {
@@ -190,12 +193,10 @@ public class HandoverService {
                     if (item.getRoute() != null && !item.getRoute().isEmpty()) {
                         sb.append(" ").append(item.getRoute());
                     }
-                    if (o.getServiceType() != null && o.getServiceType().startsWith("01")) {
-                        if (item.getDosage() != null && !item.getDosage().isEmpty()) {
-                            sb.append(" ").append(item.getDosage());
-                            if (item.getDosageUnit() != null && !item.getDosageUnit().isEmpty()) {
-                                sb.append(item.getDosageUnit());
-                            }
+                    if (item.getDosage() != null && !item.getDosage().isEmpty()) {
+                        sb.append(" ").append(item.getDosage());
+                        if (item.getDosageUnit() != null && !item.getDosageUnit().isEmpty()) {
+                            sb.append(item.getDosageUnit());
                         }
                     }
                 }
@@ -241,8 +242,13 @@ public class HandoverService {
         
         if (hp.getPatientId() != null) {
             Optional<Patient> patient = patientRepository.findById(hp.getPatientId());
-            if (patient.isPresent() && patient.get().getBirthDate() != null) {
-                dto.setAge(AgeCalculator.calculateAge(patient.get().getBirthDate()));
+            if (patient.isPresent()) {
+                dto.setPatientNo(patient.get().getPatientNo());
+                if (patient.get().getBirthDate() != null) {
+                    dto.setAge(AgeCalculator.calculateAge(patient.get().getBirthDate()));
+                } else {
+                    dto.setAge(hp.getAge());
+                }
             } else {
                 dto.setAge(hp.getAge());
             }
@@ -297,16 +303,21 @@ public class HandoverService {
         
         List<Visit> visits = visitRepository.findHandoverPatients(deptId, cutoffTime, now);
         
+        LocalDateTime vitalsCutoff = LocalDateTime.now().minusHours(24);
+        
         return visits.stream()
             .map(v -> {
                 HandoverPatientDto dto = new HandoverPatientDto();
                 dto.setVisitId(v.getId());
+                dto.setVisitNo(v.getVisitNo());
                 dto.setPatientId(v.getPatientId());
                 dto.setPatientName(v.getPatientName());
                 dto.setBedNo(v.getBedNo() != null ? v.getBedNo() : "");
+                dto.setPatientNo(v.getPatientNo());
                 dto.setDiagnosis(getDiagnosis(v.getId()));
                 dto.setFilterReason(determineFilterReason(v, cutoffTime));
                 dto.setCurrentCondition(buildCurrentCondition(v.getId(), cutoffTime));
+                dto.setVitals(buildVitals(v.getPatientNo(), vitalsCutoff));
                 
                 Optional<Patient> patient = patientRepository.findById(v.getPatientId());
                 if (patient.isPresent()) {
@@ -320,6 +331,31 @@ public class HandoverService {
                 return dto;
             })
             .collect(Collectors.toList());
+    }
+    
+    private String buildVitals(String patientNo, LocalDateTime cutoffTime) {
+        if (patientNo == null || patientNo.isEmpty()) {
+            return "";
+        }
+        
+        List<VitalSign> vitalSigns = vitalSignRepository.findByPatientNoAndRecordedAtAfter(patientNo, cutoffTime);
+        if (vitalSigns.isEmpty()) {
+            return "";
+        }
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        
+        return vitalSigns.stream()
+            .filter(vs -> vs.getRecordedAt() != null)
+            .sorted((a, b) -> b.getRecordedAt().compareTo(a.getRecordedAt()))
+            .map(vs -> {
+                String time = vs.getRecordedAt().format(formatter);
+                String type = vs.getSignType();
+                String value = vs.getSignValue();
+                String unit = vs.getSignUnit() != null ? vs.getSignUnit() : "";
+                return time + " " + type + " " + value + unit;
+            })
+            .collect(Collectors.joining("\n"));
     }
     
     private String getDiagnosis(Long visitId) {

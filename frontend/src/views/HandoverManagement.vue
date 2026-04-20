@@ -191,7 +191,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus, Printer } from '@element-plus/icons-vue'
 import ReportPreview from '@/components/handover/ReportPreview.vue'
@@ -200,9 +200,10 @@ import { loadFullReportData, type PrintableReport } from '@/mocks/handoverPrintD
 import { fetchHandoverList, deleteHandover, submitHandover, acceptHandover, rejectHandover, fetchHandoverPatients, type HandoverDto, type HandoverPatientDto } from '@/api/handover'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const loading = ref(false)
-const activeTab = ref('all')
+const activeTab = ref((route.query.tab as string) || 'all')
 const showViewDialog = ref(false)
 const viewLoading = ref(false)
 const currentHandover = ref<any>(null)

@@ -37,3 +37,9 @@ coverage/
 # Claude/OpenCode settings (keep for new machine)
 # .claude/
 # .opencode/
+
+# Vosk model files (large binary, ~42MB)
+backend/vosk-model/
+
+# OpenSpec archive (local history, not needed in repo)
+openspec/changes/archive/

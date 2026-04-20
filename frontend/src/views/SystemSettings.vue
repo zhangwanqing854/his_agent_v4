@@ -152,7 +152,7 @@
             <!-- 筛选栏 -->
             <div class="filter-bar">
               <div class="filter-left">
-                <el-select v-model="logFilter.configId" placeholder="选择接口" clearable style="width: 200px">
+                <el-select v-model="logFilter.configId" placeholder="选择接口" clearable style="width: 200px" filterable>
                   <el-option
                     v-for="config in configList"
                     :key="config.id"
@@ -359,6 +359,37 @@
               </div>
             </div>
 
+            <div class="config-card">
+              <div class="card-header">
+                <el-icon class="header-icon"><Document /></el-icon>
+                <span class="header-title">报告查看配置</span>
+              </div>
+              <div class="card-content">
+                <div class="config-row">
+                  <div class="config-item large">
+                    <label>检查报告URL</label>
+                    <el-input 
+                      v-model="reportConfig.examReportUrl" 
+                      placeholder="请输入检查报告URL，使用 {{:patient_no}} 作为患者编码变量" 
+                    />
+                  </div>
+                </div>
+                <div class="config-row">
+                  <div class="config-item large">
+                    <label>检验报告URL</label>
+                    <el-input 
+                      v-model="reportConfig.testReportUrl" 
+                      placeholder="请输入检验报告URL，使用 {{:patient_no}} 和 {{:userId}} 作为变量" 
+                    />
+                  </div>
+                </div>
+                <div class="config-hint">
+                  <el-icon><InfoFilled /></el-icon>
+                  <span>URL中的 &#123;&#123;:patient_no&#125;&#125; 将替换为患者编码，&#123;&#123;:userId&#125;&#125; 将替换为当前登录医生的用户编码</span>
+                </div>
+              </div>
+            </div>
+
             <div class="config-actions">
               <el-button @click="handleResetConfig">恢复默认</el-button>
               <el-button type="primary" @click="handleSaveConfig">
@@ -401,7 +432,8 @@ import {
   User as UserIcon,
   Bell,
   Check,
-  Message
+  Message,
+  Document
 } from '@element-plus/icons-vue'
 import InterfaceConfigDialog from '@/components/settings/InterfaceConfigDialog.vue'
 import CallLogDialog from '@/components/settings/CallLogDialog.vue'
@@ -460,6 +492,11 @@ const smsConfig = reactive({
   signName: ''
 })
 
+const reportConfig = reactive({
+  examReportUrl: '',
+  testReportUrl: ''
+})
+
 const loadSmsConfig = async () => {
   try {
     const res = await getSmsConfig()
@@ -474,6 +511,19 @@ const loadSmsConfig = async () => {
     }
   } catch (error) {
     console.error('Load SMS config error:', error)
+  }
+}
+
+const loadReportConfig = async () => {
+  try {
+    const res = await fetch('/api/system-config')
+    const result = await res.json()
+    if (result.code === 0 && result.data) {
+      reportConfig.examReportUrl = result.data.EXAM_REPORT_URL || ''
+      reportConfig.testReportUrl = result.data.TEST_REPORT_URL || ''
+    }
+  } catch (error) {
+    console.error('Load report config error:', error)
   }
 }
 
@@ -542,6 +592,7 @@ const loadConfigList = async () => {
 onMounted(() => {
   loadConfigList()
   loadSmsConfig()
+  loadReportConfig()
 })
 
 // Mock 调用日志数据
@@ -713,14 +764,25 @@ const handleSync = async (config: InterfaceConfig) => {
       config.lastSyncStatus = 'SUCCESS'
       config.lastSyncCount = syncResult.totalCount || 0
       
-      ElMessage.success(
-        `同步完成：共${syncResult.totalCount || 0}条，新增${syncResult.insertCount || 0}条，更新${syncResult.updateCount || 0}条，跳过${syncResult.skipCount || 0}条`
-      )
+      const message = syncResult.message || `同步完成：共${syncResult.totalCount || 0}条`
+      if (syncResult.totalCount === 0) {
+        ElMessage.info(message)
+      } else {
+        ElMessage.success(
+          `同步完成：共${syncResult.totalCount || 0}条，新增${syncResult.insertCount || 0}条，更新${syncResult.updateCount || 0}条，跳过${syncResult.skipCount || 0}条`
+        )
+      }
       
       loadConfigList()
     } else {
       config.lastSyncStatus = 'FAILED'
-      ElMessage.error(result.message || '同步失败')
+      const errorMsg = result.message || '同步失败'
+      if (errorMsg.includes('无新数据') || errorMsg.includes('空数据')) {
+        ElMessage.info(errorMsg)
+        config.lastSyncStatus = 'SUCCESS'
+      } else {
+        ElMessage.error(errorMsg)
+      }
     }
   } catch (error: any) {
     config.lastSyncStatus = 'FAILED'
@@ -757,8 +819,16 @@ const handleSyncAll = async () => {
           config.lastSyncCount = result.data.totalCount || 0
           successCount++
         } else {
-          config.lastSyncStatus = 'FAILED'
-          failCount++
+          const errorMsg = result.message || '同步失败'
+          if (errorMsg.includes('无新数据') || errorMsg.includes('空数据')) {
+            config.lastSyncTime = new Date().toISOString()
+            config.lastSyncStatus = 'SUCCESS'
+            config.lastSyncCount = 0
+            successCount++
+          } else {
+            config.lastSyncStatus = 'FAILED'
+            failCount++
+          }
         }
       } catch {
         config.lastSyncStatus = 'FAILED'
@@ -851,8 +921,25 @@ const handleLogPageSizeChange = (size: number) => {
 }
 
 // 系统配置
-const handleSaveConfig = () => {
-  ElMessage.success('系统配置保存成功')
+const handleSaveConfig = async () => {
+  try {
+    const res = await fetch('/api/system-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        EXAM_REPORT_URL: reportConfig.examReportUrl,
+        TEST_REPORT_URL: reportConfig.testReportUrl
+      })
+    })
+    const result = await res.json()
+    if (result.code === 0) {
+      ElMessage.success('系统配置保存成功')
+    } else {
+      ElMessage.error(result.message || '保存失败')
+    }
+  } catch (error) {
+    ElMessage.error('保存失败')
+  }
 }
 
 const handleResetConfig = () => {
@@ -862,6 +949,8 @@ const handleResetConfig = () => {
   systemConfig.aiProvider = 'dashscope'
   systemConfig.aiApiKey = ''
   systemConfig.notifyMethods = ['in_app']
+  reportConfig.examReportUrl = 'http://sichuangpacs.pkuih.edu.cn/IntegrationCenter/index.html#/views/eipTimeLine2?CMD=showlist&PW=webweb&DOMAINCODE=patientid&DOMAINID={{:patient_no}}'
+  reportConfig.testReportUrl = 'http://10.2.48.64:8001/cdr/login/loginiihPortalIntegrated.html?viewId=V002&patientId={{:patient_no}}&domainId=02&styleId=01&display=0&userId={{:userId}}&visitTimes=&XExternalUrlFlag=1&systemId=SIIH&bsiihtype=0&download=1&visitTimes='
   ElMessage.success('已恢复默认配置')
 }
 </script>

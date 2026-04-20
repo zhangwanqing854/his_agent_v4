@@ -13,6 +13,7 @@ export interface UserInfo {
   id: number
   hisStaffId: number | null
   username: string
+  usercode: string
   name: string
   role: string
   avatar: string
@@ -30,6 +31,8 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isLoggedIn: (state) => !!state.token,
     userName: (state) => state.userInfo?.name || '',
+    userCode: (state) => state.userInfo?.usercode || '',
+    hisStaffId: (state) => state.userInfo?.hisStaffId || null,
     currentDepartment: (state) => {
       if (!state.userInfo?.departments || !state.currentDepartmentId) return null
       return state.userInfo.departments.find((d: Department) => d.id === state.currentDepartmentId) || null
@@ -63,18 +66,16 @@ async login(usercode: string, password: string): Promise<boolean> {
     localStorage.setItem('token', response.data.token)
     this.userInfo = response.data.userInfo
     
-    if (this.userInfo?.departments?.length) {
-      const primaryDept = this.userInfo.departments.find((d: Department) => d.isPrimary)
-      const firstDept = this.userInfo.departments[0]
-      this.currentDepartmentId = primaryDept?.id ?? firstDept?.id ?? null
-      this.currentDepartmentCode = primaryDept?.code ?? firstDept?.code ?? ''
-      
-      if (this.currentDepartmentId) {
-        localStorage.setItem('currentDepartmentId', String(this.currentDepartmentId))
-      }
-      if (this.currentDepartmentCode) {
-        localStorage.setItem('currentDepartmentCode', this.currentDepartmentCode)
-      }
+    const primaryDept = this.userInfo?.departments?.find((d: Department) => d.isPrimary)
+    const firstDept = this.userInfo?.departments?.[0]
+    this.currentDepartmentId = primaryDept?.id ?? firstDept?.id ?? null
+    this.currentDepartmentCode = primaryDept?.code ?? firstDept?.code ?? ''
+    
+    if (this.currentDepartmentId) {
+      localStorage.setItem('currentDepartmentId', String(this.currentDepartmentId))
+    }
+    if (this.currentDepartmentCode) {
+      localStorage.setItem('currentDepartmentCode', this.currentDepartmentCode)
     }
     
     console.log('[Auth] login success, token saved, deptId:', this.currentDepartmentId)

@@ -28,3 +28,15 @@ logging:
   level:
     com.hospital.handover: DEBUG
     org.hibernate.SQL: DEBUG
+
+his:
+  soap:
+    url: "http://10.193.162.112:8089"
+    namespace: "http://i.sync.common.pkuih.iih/"
+    access-token: ""
+    timeout-ms: 30000
+
+vosk:
+  enabled: false
+  model-path: "${VOSK_MODEL_PATH:./vosk-model}"
+  sample-rate: 16000

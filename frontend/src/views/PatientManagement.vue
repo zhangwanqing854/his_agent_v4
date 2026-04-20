@@ -6,7 +6,7 @@
           <el-icon><ArrowLeft /></el-icon>
           返回
         </el-button>
-        <h1>患者管理 <span class="dept-badge">{{ authStore.currentDepartmentName }}</span></h1>
+        <h1>科室患者 <span class="dept-badge">{{ authStore.currentDepartmentName }}</span></h1>
       </div>
     </div>
 
@@ -26,13 +26,6 @@
                 <el-option label="一级" value="一级" />
                 <el-option label="二级" value="二级" />
                 <el-option label="三级" value="三级" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="风险等级">
-              <el-select v-model="filterForm.riskLevel" placeholder="全部" style="width: 100px" clearable>
-                <el-option label="高风险" value="高风险" />
-                <el-option label="中风险" value="中风险" />
-                <el-option label="低风险" value="低风险" />
               </el-select>
             </el-form-item>
             <el-form-item label="入院日期">
@@ -61,40 +54,22 @@
 
         <el-card class="table-card">
           <el-table :data="paginatedPatients" stripe v-loading="loading">
-            <el-table-column prop="bedNumber" label="床号" width="80" />
-            <el-table-column prop="name" label="姓名" width="100" />
-            <el-table-column prop="age" label="年龄" width="60" />
-            <el-table-column prop="gender" label="性别" width="60" />
-            <el-table-column prop="admissionDate" label="入院日期" width="110" />
-            <el-table-column prop="diagnosis" label="诊断" min-width="150" />
-            <el-table-column prop="attendingDoctor" label="主治医生" width="100" />
-            <el-table-column prop="nurseLevel" label="护理等级" width="80" />
-            <el-table-column label="过敏史" width="100">
+            <el-table-column prop="bedNo" label="床号" width="80" />
+            <el-table-column prop="patientNo" label="患者编码" width="120" />
+            <el-table-column prop="patientName" label="姓名" width="100" />
+            <el-table-column prop="nurseLevel" label="护理等级" width="100" />
+            <el-table-column label="危重" width="60">
               <template #default="{ row }">
-                <el-tag v-if="row.allergies.length" type="warning" size="small">
-                  {{ row.allergies.join(', ') }}
-                </el-tag>
+                <el-tag v-if="row.isCritical" type="danger" size="small">危重</el-tag>
                 <span v-else>-</span>
               </template>
             </el-table-column>
-            <el-table-column label="风险评分" width="160">
+            <el-table-column label="入院时间" width="180">
               <template #default="{ row }">
-                <div class="risk-scores">
-                  <el-tag :type="getMewsTagType(row.mewsScore)" size="small">
-                    MEWS: {{ row.mewsScore }}
-                  </el-tag>
-                  <el-tag :type="getBradenTagType(row.bradenScore)" size="small">
-                    Braden: {{ row.bradenScore }}
-                  </el-tag>
-                </div>
+                {{ formatAdmissionTime(row.admissionDatetime) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="120" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" @click="handleView(row)">查看</el-button>
-                <el-button link type="primary" @click="handleHandover(row)">交班</el-button>
-              </template>
-            </el-table-column>
+            <el-table-column prop="deptName" label="科室" min-width="150" />
           </el-table>
 
           <div class="pagination">
@@ -123,48 +98,17 @@
             :class="{ critical: patient.isCritical }"
           >
             <div class="card-header">
-              <span class="bed-number">{{ patient.bedNumber }}</span>
+              <span class="bed-number">{{ patient.bedNo }}</span>
               <span v-if="patient.isCritical" class="critical-star">★</span>
               <span class="nurse-level-tag">{{ patient.nurseLevel }}</span>
             </div>
 
             <div class="card-info">
-              <div class="name-gender-age">
-                {{ patient.name }} {{ patient.gender }} {{ patient.age }}岁
-              </div>
-              <div class="diagnosis">{{ patient.diagnosis }}</div>
+              <div class="patient-no">{{ patient.patientNo }}</div>
+              <div class="patient-name">{{ patient.patientName }}</div>
               <div class="meta-info">
-                <span>入院: {{ patient.admissionDate }}</span>
-                <span>医生: {{ patient.attendingDoctor }}</span>
+                <span>入院: {{ formatAdmissionTime(patient.admissionDatetime) }}</span>
               </div>
-            </div>
-
-            <div class="card-vitals">
-              <div class="vital-item">
-                <span class="vital-label">体温</span>
-                <span class="vital-value" :class="{ abnormal: isTempAbnormal(patient.latestVitals.temperature) }">
-                  {{ patient.latestVitals.temperature.toFixed(1) }}°C
-                </span>
-              </div>
-              <div class="vital-item">
-                <span class="vital-label">血压</span>
-                <span class="vital-value">
-                  {{ patient.latestVitals.systolicBp }}/{{ patient.latestVitals.diastolicBp }}
-                </span>
-              </div>
-            </div>
-
-            <div class="card-risks">
-              <el-tag :type="getMewsTagType(patient.mewsScore)" size="small">
-                MEWS: {{ patient.mewsScore }}
-              </el-tag>
-              <el-tag :type="getBradenTagType(patient.bradenScore)" size="small">
-                Braden: {{ patient.bradenScore }}
-              </el-tag>
-            </div>
-
-            <div class="card-actions">
-              <el-button type="primary" size="small" @click="handleView(patient)">查看详情</el-button>
             </div>
           </div>
         </div>
@@ -313,27 +257,26 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import VitalTrendChart from '@/components/VitalTrendChart.vue'
-import { getPatientList, getPatientDetail } from '@/mock/patient'
-import type { Patient, PatientListItem, PatientFilter } from '@/types/patient'
+import { fetchInpatients, type InpatientDto } from '@/api/inpatient'
 
+import type { Patient } from '@/types/patient'
 const router = useRouter()
 const authStore = useAuthStore()
 
 const activeTab = ref<'table' | 'card'>('table')
 const drawerVisible = ref(false)
-const selectedPatient = ref<Patient | null>(null)
+const selectedPatient = ref<InpatientDto | null>(null)
 const currentVitalMetric = ref<'temperature' | 'pulse' | 'bloodPressure' | 'oxygen'>('temperature')
 
-const filterForm = reactive<PatientFilter>({
+const filterForm = reactive({
   bedNumber: '',
   name: '',
   nurseLevel: '',
-  riskLevel: '',
   admissionDateStart: '',
   admissionDateEnd: ''
 })
 
-const patientList = ref<PatientListItem[]>([])
+const patientList = ref<InpatientDto[]>([])
 const loading = ref(false)
 
 const pagination = reactive({ page: 1, pageSize: 10, total: 0 })
@@ -342,26 +285,19 @@ const filteredPatients = computed(() => {
   let result = [...patientList.value]
   
   if (filterForm.bedNumber) {
-    result = result.filter(p => p.bedNumber.includes(filterForm.bedNumber))
+    result = result.filter(p => p.bedNo && p.bedNo.includes(filterForm.bedNumber))
   }
   if (filterForm.name) {
-    result = result.filter(p => p.name.includes(filterForm.name))
+    result = result.filter(p => p.patientName && p.patientName.includes(filterForm.name))
   }
   if (filterForm.nurseLevel) {
     result = result.filter(p => p.nurseLevel === filterForm.nurseLevel)
   }
-  if (filterForm.riskLevel === '高风险') {
-    result = result.filter(p => p.mewsScore >= 3)
-  } else if (filterForm.riskLevel === '中风险') {
-    result = result.filter(p => p.mewsScore >= 1 && p.mewsScore <= 2)
-  } else if (filterForm.riskLevel === '低风险') {
-    result = result.filter(p => p.mewsScore === 0)
-  }
   if (filterForm.admissionDateStart) {
-    result = result.filter(p => p.admissionDate >= filterForm.admissionDateStart)
+    result = result.filter(p => p.admissionDatetime && p.admissionDatetime >= filterForm.admissionDateStart)
   }
   if (filterForm.admissionDateEnd) {
-    result = result.filter(p => p.admissionDate <= filterForm.admissionDateEnd)
+    result = result.filter(p => p.admissionDatetime && p.admissionDatetime <= filterForm.admissionDateEnd + 'T23:59:59')
   }
   
   return result
@@ -377,9 +313,14 @@ const paginatedPatients = computed(() => {
 const fetchPatients = async () => {
   loading.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 300))
     const deptId = authStore.currentDepartmentId
-    patientList.value = getPatientList(deptId || 1)
+    if (!deptId) return
+    const res = await fetchInpatients(deptId)
+    if (res.code === 0 && res.data) {
+      patientList.value = res.data
+    } else {
+      patientList.value = []
+    }
   } catch {
     ElMessage.error('加载患者列表失败')
     patientList.value = []
@@ -396,31 +337,23 @@ const handleReset = () => {
   filterForm.bedNumber = ''
   filterForm.name = ''
   filterForm.nurseLevel = ''
-  filterForm.riskLevel = ''
   filterForm.admissionDateStart = ''
   filterForm.admissionDateEnd = ''
   pagination.page = 1
 }
 
-const handleView = (patient: PatientListItem) => {
-  const detail = getPatientDetail(patient.id)
-  if (!detail) {
-    ElMessage.warning('患者数据不存在')
-    return
-  }
-  selectedPatient.value = detail
-  drawerVisible.value = true
+const handleView = (patient: InpatientDto) => {
+  ElMessage.info(`查看患者: ${patient.patientName} (${patient.bedNo})`)
 }
 
-const handleHandover = (patient: PatientListItem | Patient | null) => {
-  if (!patient) {
-    ElMessage.warning('请先选择患者')
-    return
-  }
-  router.push(`/handovers/new?patientId=${patient.id}`)
+const handleHandover = (patient: InpatientDto) => {
+  router.push(`/handovers/create?patientId=${patient.id}`)
 }
 
-const isTempAbnormal = (temp: number) => temp > 38 || temp < 36
+const formatAdmissionTime = (datetime: string) => {
+  if (!datetime) return '-'
+  return datetime.replace('T', ' ').substring(0, 16)
+}
 
 const getMewsTagType = (score: number) => {
   if (score >= 3) return 'danger'

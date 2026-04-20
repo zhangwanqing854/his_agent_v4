@@ -29,4 +29,16 @@ public interface ShiftHandoverRepository extends JpaRepository<ShiftHandover, Lo
     Long findMaxSequenceByPrefix(@Param("prefix") String prefix);
     
     boolean existsByHandoverNo(String handoverNo);
+    
+    @Query("SELECT COUNT(h) FROM ShiftHandover h WHERE h.deptId = :deptId AND h.status = :status")
+    long countByDeptIdAndStatus(@Param("deptId") Long deptId, @Param("status") String status);
+    
+    @Query("SELECT COUNT(h) FROM ShiftHandover h WHERE h.deptId = :deptId AND h.status IN ('PENDING', 'TRANSFERRING')")
+    long countPendingByDeptId(@Param("deptId") Long deptId);
+    
+    @Query("SELECT COUNT(h) FROM ShiftHandover h WHERE h.deptId = :deptId AND (h.fromDoctorId = :doctorId OR h.toDoctorId = :doctorId) AND h.status = :status")
+    long countByDeptIdAndDoctorIdAndStatus(@Param("deptId") Long deptId, @Param("doctorId") Long doctorId, @Param("status") String status);
+    
+    @Query("SELECT COUNT(h) FROM ShiftHandover h WHERE h.deptId = :deptId AND h.toDoctorId = :doctorId AND h.status IN ('PENDING', 'TRANSFERRING')")
+    long countPendingByDeptIdAndDoctorId(@Param("deptId") Long deptId, @Param("doctorId") Long doctorId);
 }

@@ -7,6 +7,7 @@ public class UserInfo {
     private Long id;
     private Long hisStaffId;
     private String username;
+    private String usercode;
     private String name;
     private String role;
     private String avatar;
@@ -22,6 +23,9 @@ public class UserInfo {
     
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+    
+    public String getUsercode() { return usercode; }
+    public void setUsercode(String usercode) { this.usercode = usercode; }
     
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

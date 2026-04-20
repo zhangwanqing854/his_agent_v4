@@ -10,7 +10,7 @@
     </div>
 
     <div class="stats-grid">
-      <el-card class="stat-card" shadow="hover">
+      <el-card class="stat-card clickable" shadow="hover" @click="router.push('/patients')">
         <div class="stat-icon" style="background: linear-gradient(135deg, #ffb366, #ff9443)">
           <el-icon :size="32"><Document /></el-icon>
         </div>
@@ -20,7 +20,7 @@
         </div>
       </el-card>
 
-      <el-card class="stat-card" shadow="hover">
+      <el-card class="stat-card clickable" shadow="hover" @click="router.push('/handovers?tab=completed')">
         <div class="stat-icon" style="background: linear-gradient(135deg, #67c23a, #529b2e)">
           <el-icon :size="32"><CircleCheck /></el-icon>
         </div>
@@ -30,7 +30,7 @@
         </div>
       </el-card>
 
-      <el-card class="stat-card" shadow="hover">
+      <el-card class="stat-card clickable" shadow="hover" @click="router.push('/handovers?tab=pending')">
         <div class="stat-icon" style="background: linear-gradient(135deg, #e6a23c, #d4880b)">
           <el-icon :size="32"><Bell /></el-icon>
         </div>
@@ -52,12 +52,7 @@
 
         <el-card class="action-card" shadow="hover" @click="router.push('/patients')">
           <el-icon :size="40" color="#67c23a"><User /></el-icon>
-          <div class="action-label">患者管理</div>
-        </el-card>
-
-        <el-card class="action-card" shadow="hover" @click="router.push('/todos')">
-          <el-icon :size="40" color="#409eff"><List /></el-icon>
-          <div class="action-label">待办事项</div>
+          <div class="action-label">科室患者</div>
         </el-card>
 
         <el-card class="action-card" shadow="hover" @click="router.push('/statistics')">
@@ -100,24 +95,43 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { User, Document, CircleCheck, Bell, List, DataAnalysis, UserFilled, Key, Setting, Avatar, OfficeBuilding, Calendar } from '@element-plus/icons-vue'
+import { fetchDashboardStats, type DashboardStatsDto } from '@/api/dashboardStats'
+import { User, Document, CircleCheck, Bell, DataAnalysis, UserFilled, Key, Setting, Avatar, OfficeBuilding, Calendar } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const departmentStats: Record<number, { totalPatients: number; completedHandovers: number; pendingHandovers: number }> = {
-  1: { totalPatients: 8, completedHandovers: 1, pendingHandovers: 1 },
-  2: { totalPatients: 5, completedHandovers: 0, pendingHandovers: 1 },
-  3: { totalPatients: 3, completedHandovers: 1, pendingHandovers: 0 },
-  4: { totalPatients: 2, completedHandovers: 0, pendingHandovers: 0 }
+const stats = ref<DashboardStatsDto>({
+  totalPatients: 0,
+  completedHandovers: 0,
+  pendingHandovers: 0
+})
+
+const loading = ref(false)
+
+const loadStats = async () => {
+  const deptCode = authStore.currentDepartmentCode
+  const doctorId = authStore.hisStaffId
+  if (!deptCode || !doctorId) return
+  
+  loading.value = true
+  try {
+    const res = await fetchDashboardStats(deptCode, doctorId)
+    if (res.code === 0 && res.data) {
+      stats.value = res.data
+    }
+  } catch (error) {
+    console.error('加载统计数据失败:', error)
+  } finally {
+    loading.value = false
+  }
 }
 
-const stats = computed(() => {
-  const deptId = authStore.currentDepartmentId
-  return departmentStats[deptId as keyof typeof departmentStats] || { totalPatients: 0, completedHandovers: 0, pendingHandovers: 0 }
+onMounted(() => {
+  loadStats()
 })
 </script>
 

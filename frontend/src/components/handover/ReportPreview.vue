@@ -52,29 +52,33 @@
 
         <div class="section-title">交班详情</div>
         <div class="stats-text">
-          患者总数 {{ reportData.stats.totalPatients }}人，入院 {{ reportData.stats.admission }}人，
-          转出 {{ reportData.stats.transferOut }}人，出院 {{ reportData.stats.discharge }}人， 转入
-          {{ reportData.stats.transferIn }}人
+          全科患者 {{ reportData.stats.totalNum }}人，危重患者 {{ reportData.stats.diseNum }}人，新入院 {{ reportData.stats.newInHos }}人，
+          转入 {{ reportData.stats.transIn }}人，转出 {{ reportData.stats.transOut }}人，今日出院 {{ reportData.stats.outNum }}人，
+          今日手术 {{ reportData.stats.surgNum }}人，死亡 {{ reportData.stats.deathNum }}人
         </div>
         <table class="patient-table">
           <thead>
             <tr>
-              <th>床号</th>
-              <th>姓名</th>
-              <th>性别</th>
-              <th>年龄</th>
-              <th>诊断</th>
+              <th style="width: 50px">床号</th>
+              <th style="width: 60px">姓名</th>
+              <th style="width: 40px">性别</th>
+              <th style="width: 40px">年龄</th>
+              <th style="width: 120px">诊断</th>
+              <th style="width: 80px">生命体征</th>
               <th>病情描述</th>
+              <th style="width: 80px">需观察项</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="patient in reportData.patients" :key="patient.id">
               <td>{{ patient.bedNumber }}</td>
               <td>{{ patient.name }}</td>
-              <td>{{ patient.gender }}</td>
-              <td>{{ patient.age }}岁</td>
+              <td>{{ patient.gender || '-' }}</td>
+              <td>{{ patient.age ? patient.age + '岁' : '-' }}</td>
               <td>{{ patient.diagnosis }}</td>
+              <td class="vitals-cell">{{ patient.vitals || '-' }}</td>
               <td>{{ patient.condition || '-' }}</td>
+              <td>{{ patient.observationItems || '-' }}</td>
             </tr>
           </tbody>
         </table>
@@ -225,7 +229,9 @@ const handlePrint = () => {
         .patient-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
         .patient-table th, .patient-table td { padding: 5px 8px; border: 1px solid #999; text-align: center; font-size: 11pt; }
         .patient-table th { background: #f5f5f5; font-weight: bold; }
-        .patient-table td:nth-child(6) { text-align: left; }
+        .patient-table td:nth-child(6) { text-align: left; font-size: 9pt; white-space: pre-line; }
+        .patient-table td:nth-child(7) { text-align: left; }
+        .patient-table td:nth-child(8) { text-align: left; }
         .signature-section { margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; }
         .signature-row { display: flex; justify-content: space-between; gap: 40px; }
         .signature-item { display: flex; align-items: center; gap: 8px; }
@@ -392,8 +398,13 @@ table {
   background: #f5f5f5;
   font-weight: bold;
 }
-.patient-table td:nth-child(6) {
+.patient-table td:nth-child(7) {
   text-align: left;
+}
+.vitals-cell {
+  font-size: 10px;
+  text-align: left;
+  white-space: pre-line;
 }
 
 .signature-section {

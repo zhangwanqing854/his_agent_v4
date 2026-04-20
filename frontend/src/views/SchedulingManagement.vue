@@ -126,7 +126,7 @@
           <span>{{ editForm.dutyDate }}</span>
         </el-form-item>
         <el-form-item label="值班人员">
-          <el-select v-model="editForm.staffId" placeholder="选择值班人员" clearable>
+          <el-select v-model="editForm.staffId" placeholder="选择值班人员" clearable filterable>
             <el-option
               v-for="staff in staffList"
               :key="staff.id"

@@ -22,7 +22,7 @@
               <el-icon><Search /></el-icon>
             </template>
           </el-input>
-          <el-select v-model="filter.departmentId" placeholder="所属科室" clearable style="width: 160px">
+          <el-select v-model="filter.departmentId" placeholder="所属科室" clearable style="width: 160px" filterable>
             <el-option
               v-for="dept in departmentList"
               :key="dept.id"
@@ -40,7 +40,7 @@
       </div>
 
       <el-table
-        :data="filteredList"
+        :data="paginatedStaff"
         style="width: 100%"
         class="staff-table"
         :header-cell-style="{ background: '#fafafa', color: '#303133', fontWeight: '600' }"
@@ -88,6 +88,18 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :page-sizes="pagination.pageSizes"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </div>
 
     <el-dialog
@@ -104,7 +116,7 @@
           <el-input v-model="formData.name" placeholder="请输入姓名" />
         </el-form-item>
         <el-form-item label="所属科室">
-          <el-select v-model="formData.departmentId" placeholder="请选择科室" style="width: 100%">
+          <el-select v-model="formData.departmentId" placeholder="请选择科室" style="width: 100%" filterable>
             <el-option
               v-for="dept in departmentList"
               :key="dept.id"
@@ -165,6 +177,13 @@ const formData = reactive({
   phone: ''
 })
 
+const pagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 0,
+  pageSizes: [10, 20, 50, 100]
+})
+
 const filteredList = computed(() => {
   return staffList.value.filter(staff => {
     if (filter.name && !staff.name.includes(filter.name)) return false
@@ -172,6 +191,22 @@ const filteredList = computed(() => {
     return true
   })
 })
+
+const paginatedStaff = computed(() => {
+  const start = (pagination.page - 1) * pagination.pageSize
+  const end = start + pagination.pageSize
+  pagination.total = filteredList.value.length
+  return filteredList.value.slice(start, end)
+})
+
+const handlePageChange = (page: number) => {
+  pagination.page = page
+}
+
+const handleSizeChange = (size: number) => {
+  pagination.pageSize = size
+  pagination.page = 1
+}
 
 const loadStaffList = async () => {
   try {
@@ -370,5 +405,13 @@ onMounted(() => {
 .time-text {
   color: var(--text-secondary);
   font-size: 13px;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
 }
 </style>

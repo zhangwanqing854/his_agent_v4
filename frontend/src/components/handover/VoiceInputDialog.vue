@@ -312,6 +312,7 @@ import { parseVoiceText, type ParsedVoiceItem } from '@/utils/voiceParser'
 import { batchMatchPatients, type MatchResult } from '@/utils/patientMatcher'
 import type { PatientInfo } from '@/types/patient'
 import { checkVoiceSessionStatus, createVoiceSession } from '@/api/voice'
+import { VoiceWebSocket } from '@/utils/voiceWebSocket'
 import QRCode from 'qrcode'
 
 interface Props {
@@ -364,7 +365,7 @@ const isInlineMode = computed(() => !!props.patient)
 
 let mediaRecorder: MediaRecorder | null = null
 let audioChunks: Blob[] = []
-let recognition: SpeechRecognition | null = null
+let voiceWebSocket: VoiceWebSocket | null = null
 let pollingTimer: number | null = null
 
 // 冲突关键词对
@@ -431,97 +432,63 @@ const checkMicrophone = async (): Promise<boolean> => {
 }
 
 const startRecording = async () => {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    mediaRecorder = new MediaRecorder(stream)
-    audioChunks = []
-
-    mediaRecorder.ondataavailable = (event) => {
-      audioChunks.push(event.data)
-    }
-
-    mediaRecorder.start()
-    startSpeechRecognition()
-  } catch {
-    ElMessage.error('无法访问麦克风')
-    status.value = 'no-mic'
-  }
+  await startSpeechRecognition()
 }
 
-const startSpeechRecognition = () => {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-  if (!SpeechRecognition) {
-    ElMessage.warning('当前浏览器不支持语音识别，请使用Chrome浏览器')
-    status.value = 'no-mic'
-    generateSessionId()
-    return
-  }
-
-  recognition = new SpeechRecognition()
-  recognition.continuous = true
-  recognition.interimResults = true
-  recognition.lang = 'zh-CN'
-
-  recognition.onresult = (event: SpeechRecognitionEvent) => {
-    let finalTranscript = ''
-    let interimTranscript = ''
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript
-      if (event.results[i].isFinal) {
-        finalTranscript += transcript
-      } else {
-        interimTranscript += transcript
+const startSpeechRecognition = async () => {
+  const hostname = window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname
+  const port = '8080'
+  const wsUrl = `ws://${hostname}:${port}/ws/voice`
+  
+  voiceWebSocket = new VoiceWebSocket(wsUrl, {
+    onConnected: () => {
+      voiceWebSocket?.startRecording()
+    },
+    onPartial: (text) => {
+      interimTranscriptDisplay.value = text
+    },
+    onResult: (text) => {
+      transcriptText.value += text
+      interimTranscriptDisplay.value = ''
+    },
+    onFinal: (text) => {
+      if (text) {
+        transcriptText.value += text
       }
-    }
-
-    if (finalTranscript) {
-      transcriptText.value += finalTranscript
-    }
-
-    interimTranscriptDisplay.value = interimTranscript
-  }
-
-  recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-    if (event.error === 'not-allowed') {
-      ElMessage.error('麦克风权限被拒绝')
-      status.value = 'no-mic'
-    } else if (event.error === 'no-speech') {
-      ElMessage.warning('未检测到语音输入')
-    } else if (event.error !== 'aborted') {
-      ElMessage.error(`语音识别错误: ${event.error}`)
-    }
-  }
-
-  recognition.onend = () => {
-    if (status.value === 'recording') {
-      try {
-        recognition?.start()
-      } catch {
-        console.warn('Recognition restart failed')
+      interimTranscriptDisplay.value = ''
+    },
+    onError: (error) => {
+      ElMessage.error(`语音识别错误: ${error}`)
+    },
+    onDisconnected: () => {
+      if (status.value === 'recording') {
+        ElMessage.warning('语音识别连接断开')
       }
-    }
-  }
-
+    },
+    maxRetries: 3,
+    retryDelay: 1000
+  })
+  
   try {
-    recognition.start()
+    await voiceWebSocket.connect()
   } catch (error) {
     ElMessage.error('启动语音识别失败')
-    console.error('Speech recognition start error:', error)
+    console.error('WebSocket connection error:', error)
+    status.value = 'no-mic'
+    generateSessionId()
   }
 }
 
 const stopRecording = () => {
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop()
-    mediaRecorder.stream.getTracks().forEach(track => track.stop())
+  if (voiceWebSocket) {
+    voiceWebSocket.stopRecording()
   }
 }
 
 const stopTranscription = () => {
-  if (recognition) {
-    recognition.stop()
-    recognition = null
+  if (voiceWebSocket) {
+    voiceWebSocket.disconnect()
+    voiceWebSocket = null
   }
 }
 
@@ -533,20 +500,23 @@ const handlePause = () => {
 
 const handleResume = async () => {
   status.value = 'recording'
-  await startRecording()
+  await startSpeechRecognition()
 }
 
-const handleStop = () => {
-  stopRecording()
+const handleStop = async () => {
   stopTranscription()
   transcriptText.value = ''
   interimTranscriptDisplay.value = ''
-  startRecording()
+  await startSpeechRecognition()
 }
 
 const handleComplete = () => {
   const savedTranscript = transcriptText.value
-  stopRecording()
+  
+  if (voiceWebSocket) {
+    voiceWebSocket.sendEnd()
+    voiceWebSocket.stopRecording()
+  }
   stopTranscription()
 
   if (isInlineMode.value) {

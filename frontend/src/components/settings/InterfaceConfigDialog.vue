@@ -138,7 +138,7 @@
           <div v-for="(table, tIndex) in form.mappingTables" :key="tIndex" class="mapping-table-item">
             <div class="table-header">
               <div class="table-info">
-                <el-select v-model="table.targetTable" placeholder="选择目标表" style="width: 200px">
+                <el-select v-model="table.targetTable" placeholder="选择目标表" style="width: 200px" filterable>
                   <el-option v-for="opt in TARGET_TABLE_OPTIONS" :key="opt.value" :label="opt.label" :value="opt.value" />
                 </el-select>
                 <el-input v-model="table.dataPath" placeholder="数据路径，如 data.orders" style="width: 180px">
@@ -187,7 +187,7 @@
               <div v-for="(child, cIndex) in table.children" :key="cIndex" class="child-table-item">
                 <div class="child-header">
                   <span class="child-label">子表</span>
-                  <el-select v-model="child.targetTable" placeholder="选择子表" style="width: 180px">
+                  <el-select v-model="child.targetTable" placeholder="选择子表" style="width: 180px" filterable>
                     <el-option v-for="opt in TARGET_TABLE_OPTIONS" :key="opt.value" :label="opt.label" :value="opt.value" />
                   </el-select>
                   <el-input v-model="child.dataPath" placeholder="数据路径，如 items" style="width: 140px">

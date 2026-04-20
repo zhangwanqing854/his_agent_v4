@@ -22,13 +22,14 @@ export interface PrintableReport {
 
   // 科室统计
   stats: {
-    totalPatients: number
-    admission: number
-    transferOut: number
-    discharge: number
-    transferIn: number
-    death: number
-    surgery: number
+    totalNum: number
+    diseNum: number
+    newInHos: number
+    transIn: number
+    transOut: number
+    outNum: number
+    surgNum: number
+    deathNum: number
     criticalCount: number
   }
 
@@ -61,13 +62,14 @@ export interface PrintablePatient {
   bedNumber: string
   name: string
   age?: number
-  gender?: '男' | '女'
+  gender?: string
   diagnosis: string
   condition: string
+  vitals?: string
+  observationItems?: string
   isCritical: boolean
 
-  // 生命体征 (最新)
-  vitals?: {
+  vitalsObj?: {
     temperature?: number
     heartRate?: number
     bloodPressure?: string
@@ -75,7 +77,6 @@ export interface PrintablePatient {
     spo2?: number
   }
 
-  // 风险评估
   riskScores: {
     mews?: number
     mewsLevel: 'low' | 'moderate' | 'high'
@@ -111,13 +112,14 @@ export const mockPrintableReport: PrintableReport = {
   status: 'PENDING',
 
   stats: {
-    totalPatients: 8,
-    admission: 1,
-    transferOut: 1,
-    discharge: 1,
-    transferIn: 0,
-    death: 0,
-    surgery: 0,
+    totalNum: 8,
+    diseNum: 2,
+    newInHos: 1,
+    transIn: 0,
+    transOut: 1,
+    outNum: 1,
+    surgNum: 0,
+    deathNum: 0,
     criticalCount: 2
   },
 
@@ -384,16 +386,22 @@ interface PreviewFormData {
     id: number
     bedNumber?: string
     name?: string
+    age?: number
+    gender?: string
     diagnosis?: string
     condition?: string
+    vitals?: string
+    observationItems?: string
   }>
   stats?: {
-    admission?: number
-    transferOut?: number
-    discharge?: number
-    transferIn?: number
-    death?: number
-    surgery?: number
+    totalNum?: number
+    diseNum?: number
+    newInHos?: number
+    transIn?: number
+    transOut?: number
+    outNum?: number
+    surgNum?: number
+    deathNum?: number
   }
 }
 
@@ -407,19 +415,24 @@ export function generatePreviewData(formData: PreviewFormData): PrintableReport 
       id: p.id,
       bedNumber: p.bedNumber || '',
       name: p.name || '',
+      age: p.age,
+      gender: p.gender || '',
       diagnosis: p.diagnosis || '',
       condition: p.condition || '',
+      vitals: p.vitals || '',
+      observationItems: p.observationItems || '',
       isCritical: p.condition && p.condition.length > 20
     })) || [],
     stats: {
       ...mockPrintableReport.stats,
-      totalPatients: formData.patients?.length || 0,
-      admission: formData.stats?.admission || 0,
-      transferOut: formData.stats?.transferOut || 0,
-      discharge: formData.stats?.discharge || 0,
-      transferIn: formData.stats?.transferIn || 0,
-      death: formData.stats?.death || 0,
-      surgery: formData.stats?.surgery || 0,
+      totalNum: formData.stats?.totalNum || 0,
+      diseNum: formData.stats?.diseNum || 0,
+      newInHos: formData.stats?.newInHos || 0,
+      transIn: formData.stats?.transIn || 0,
+      transOut: formData.stats?.transOut || 0,
+      outNum: formData.stats?.outNum || 0,
+      surgNum: formData.stats?.surgNum || 0,
+      deathNum: formData.stats?.deathNum || 0,
       criticalCount: formData.patients?.filter((p) => p.condition?.length > 20).length || 0
     }
   }

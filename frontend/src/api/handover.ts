@@ -21,6 +21,7 @@ export interface HandoverDto {
 export interface HandoverPatientDto {
   id: number
   visitId: number
+  visitNo: string
   patientId: number
   patientName: string
   gender: string

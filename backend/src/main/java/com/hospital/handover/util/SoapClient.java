@@ -124,7 +124,8 @@ public class SoapClient {
         }
         
         if (jsonData == null || jsonData.trim().isEmpty()) {
-            throw new Exception("HIS接口返回数据为空，暂无同步数据");
+            logger.info("HIS接口返回空数据，本次同步无新增数据");
+            return objectMapper.createArrayNode();
         }
         
         jsonData = decodeHtmlEntities(jsonData);
@@ -289,15 +290,14 @@ public class SoapClient {
         Matcher matcher = RETURN_PATTERN.matcher(soapResponse);
         if (matcher.find()) {
             String returnContent = matcher.group(1);
-            // The HIS SOAP service returns JSON array directly in the <return> element
-            // Clean up any CDATA or extra whitespace
             returnContent = returnContent.trim();
             if (returnContent.startsWith("<![CDATA[")) {
                 returnContent = returnContent.substring(9, returnContent.length() - 3);
             }
             return returnContent;
         }
-        throw new RuntimeException("Failed to extract JSON from SOAP response - no <return> element found");
+        logger.warn("SOAP响应中未找到<return>元素，返回空数据");
+        return "";
     }
     
     /**

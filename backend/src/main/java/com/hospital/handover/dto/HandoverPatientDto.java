@@ -4,6 +4,8 @@ public class HandoverPatientDto {
     
     private Long id;
     private Long visitId;
+    private String visitNo;
+    private String patientNo;
     private Long patientId;
     private String patientName;
     private String gender;
@@ -25,6 +27,12 @@ public class HandoverPatientDto {
     
     public Long getVisitId() { return visitId; }
     public void setVisitId(Long visitId) { this.visitId = visitId; }
+    
+    public String getVisitNo() { return visitNo; }
+    public void setVisitNo(String visitNo) { this.visitNo = visitNo; }
+    
+    public String getPatientNo() { return patientNo; }
+    public void setPatientNo(String patientNo) { this.patientNo = patientNo; }
     
     public Long getPatientId() { return patientId; }
     public void setPatientId(Long patientId) { this.patientId = patientId; }

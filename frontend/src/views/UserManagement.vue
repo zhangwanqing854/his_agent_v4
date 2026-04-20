@@ -48,7 +48,7 @@
 
       <!-- 用户列表 -->
       <el-table
-        :data="filteredUserList"
+        :data="paginatedUsers"
         style="width: 100%"
         class="user-table"
         :header-cell-style="{ background: '#fafafa', color: '#303133', fontWeight: '600' }"
@@ -127,6 +127,18 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :page-sizes="pagination.pageSizes"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </div>
 
     <!-- 用户编辑弹窗 -->
@@ -169,6 +181,14 @@ const roleList = ref<Role[]>([])
 const userDialogVisible = ref(false)
 const currentUser = ref<User | null>(null)
 
+// 分页
+const pagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 0,
+  pageSizes: [10, 20, 50, 100]
+})
+
 // 筛选后的用户列表
 const filteredUserList = computed(() => {
   return userList.value.filter(user => {
@@ -178,6 +198,23 @@ const filteredUserList = computed(() => {
     return true
   })
 })
+
+// 当前页数据
+const paginatedUsers = computed(() => {
+  const start = (pagination.page - 1) * pagination.pageSize
+  const end = start + pagination.pageSize
+  pagination.total = filteredUserList.value.length
+  return filteredUserList.value.slice(start, end)
+})
+
+const handlePageChange = (page: number) => {
+  pagination.page = page
+}
+
+const handleSizeChange = (size: number) => {
+  pagination.pageSize = size
+  pagination.page = 1
+}
 
 // 加载用户列表
 const loadUserList = async () => {
@@ -396,5 +433,13 @@ onMounted(() => {
 .time-text {
   color: var(--text-secondary);
   font-size: 13px;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
 }
 </style>

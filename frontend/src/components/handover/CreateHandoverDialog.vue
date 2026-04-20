@@ -38,7 +38,7 @@
           </div>
           <div class="info-field">
             <label>接班医生 <span class="required">*</span></label>
-            <el-select v-model="form.toDoctorId" placeholder="请选择接班医生" class="doctor-select">
+            <el-select v-model="form.toDoctorId" placeholder="请选择接班医生" class="doctor-select" filterable>
               <el-option
                 v-for="doctor in filteredDoctorList"
                 :key="doctor.id"
@@ -54,37 +54,40 @@
       <div class="stats-section">
         <div class="stats-row">
           <div class="stat-item primary">
-            <span class="stat-label">患者总数</span>
-            <span class="stat-value">{{ form.patients.length }}人</span>
+            <span class="stat-label">全科患者</span>
+            <span class="stat-value">{{ form.stats.totalNum }}人</span>
+          </div>
+          <div class="stat-item warning">
+            <span class="stat-label">危重患者</span>
+            <span class="stat-value">{{ form.stats.diseNum }}人</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">入院</span>
-            <el-input-number v-model="form.stats.admission" :min="0" size="small" controls-position="right" />
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">转出</span>
-            <el-input-number v-model="form.stats.transferOut" :min="0" size="small" controls-position="right" />
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">出院</span>
-            <el-input-number v-model="form.stats.discharge" :min="0" size="small" controls-position="right" />
+            <span class="stat-label">新入院</span>
+            <el-input-number v-model="form.stats.newInHos" :min="0" size="small" controls-position="right" />
           </div>
           <div class="stat-item">
             <span class="stat-label">转入</span>
-            <el-input-number v-model="form.stats.transferIn" :min="0" size="small" controls-position="right" />
+            <el-input-number v-model="form.stats.transIn" :min="0" size="small" controls-position="right" />
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">转出</span>
+            <el-input-number v-model="form.stats.transOut" :min="0" size="small" controls-position="right" />
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">今日出院</span>
+            <el-input-number v-model="form.stats.outNum" :min="0" size="small" controls-position="right" />
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">今日手术</span>
+            <el-input-number v-model="form.stats.surgNum" :min="0" size="small" controls-position="right" />
           </div>
           <div class="stat-item danger">
             <span class="stat-label">死亡</span>
-            <el-input-number v-model="form.stats.death" :min="0" size="small" controls-position="right" />
+            <el-input-number v-model="form.stats.deathNum" :min="0" size="small" controls-position="right" />
           </div>
-          <div class="stat-item">
-            <span class="stat-label">手术</span>
-            <el-input-number v-model="form.stats.surgery" :min="0" size="small" controls-position="right" />
-          </div>
-          <div class="stat-item warning">
-            <span class="stat-label">病危</span>
-            <span class="stat-value">{{ criticalCount }}人</span>
-          </div>
+        </div>
+        <div v-if="deptPatientOverview?.syncedAt" class="sync-time">
+          数据同步时间：{{ new Date(deptPatientOverview.syncedAt).toLocaleString('zh-CN') }}
         </div>
       </div>
 
@@ -181,6 +184,7 @@ import { useAuthStore } from '@/stores/auth'
 import VoiceInputDialog from './VoiceInputDialog.vue'
 import ReportPreview from './ReportPreview.vue'
 import { generatePreviewData, type PrintableReport } from '@/mocks/handoverPrintData'
+import { fetchDeptPatientOverview, type DeptPatientOverview } from '@/api/deptPatientOverview'
 
 interface Props {
   modelValue: boolean
@@ -221,6 +225,8 @@ const loading = ref(false)
 const showVoiceDialog = ref(false)
 const showPreviewDialog = ref(false)
 const previewData = ref<PrintableReport | null>(null)
+const overviewLoading = ref(false)
+const deptPatientOverview = ref<DeptPatientOverview | null>(null)
 
 const allDoctors: Doctor[] = [
   { id: 2, name: '李医生', departmentId: 1 },
@@ -270,12 +276,14 @@ const form = reactive({
   toDoctorId: null as number | null,
   patients: [] as PatientHandover[],
   stats: {
-    admission: 1,
-    transferOut: 1,
-    discharge: 1,
-    transferIn: 0,
-    death: 0,
-    surgery: 0
+    totalNum: 0,
+    diseNum: 0,
+    newInHos: 0,
+    transIn: 0,
+    transOut: 0,
+    outNum: 0,
+    surgNum: 0,
+    deathNum: 0
   }
 })
 
@@ -292,7 +300,7 @@ watch(visible, (val) => {
   emit('update:modelValue', val)
 })
 
-const handleOpen = () => {
+const handleOpen = async () => {
   const deptId = authStore.currentDepartmentId
   if (deptId && patientsByDepartment[deptId]) {
     form.patients = JSON.parse(JSON.stringify(patientsByDepartment[deptId]))
@@ -301,13 +309,36 @@ const handleOpen = () => {
   }
   form.shift = '白班'
   form.toDoctorId = null
-  form.stats = {
-    admission: 1,
-    transferOut: 1,
-    discharge: 1,
-    transferIn: 0,
-    death: 0,
-    surgery: 0
+  
+  overviewLoading.value = true
+  try {
+    const deptCode = authStore.currentDepartmentCode
+    if (deptCode) {
+      const res = await fetchDeptPatientOverview(deptCode)
+      deptPatientOverview.value = res.data
+      form.stats.totalNum = res.data.totalNum || 0
+      form.stats.diseNum = res.data.diseNum || 0
+      form.stats.newInHos = res.data.newInHos || 0
+      form.stats.transIn = res.data.transIn || 0
+      form.stats.transOut = res.data.transOut || 0
+      form.stats.outNum = res.data.outNum || 0
+      form.stats.surgNum = res.data.surgNum || 0
+      form.stats.deathNum = res.data.deathNum || 0
+    } else {
+      deptPatientOverview.value = null
+    }
+  } catch {
+    form.stats.totalNum = 0
+    form.stats.diseNum = 0
+    form.stats.newInHos = 0
+    form.stats.transIn = 0
+    form.stats.transOut = 0
+    form.stats.outNum = 0
+    form.stats.surgNum = 0
+    form.stats.deathNum = 0
+    deptPatientOverview.value = null
+  } finally {
+    overviewLoading.value = false
   }
 }
 
@@ -316,13 +347,16 @@ const resetForm = () => {
   form.toDoctorId = null
   form.patients = []
   form.stats = {
-    admission: 0,
-    transferOut: 0,
-    discharge: 0,
-    transferIn: 0,
-    death: 0,
-    surgery: 0
+    totalNum: 0,
+    diseNum: 0,
+    newInHos: 0,
+    transIn: 0,
+    transOut: 0,
+    outNum: 0,
+    surgNum: 0,
+    deathNum: 0
   }
+  deptPatientOverview.value = null
 }
 
 const handleClose = () => {
@@ -551,6 +585,13 @@ const handleSubmit = async () => {
   display: flex;
   gap: 24px;
   flex-wrap: wrap;
+}
+
+.sync-time {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #909399;
+  text-align: right;
 }
 
 .stat-item {

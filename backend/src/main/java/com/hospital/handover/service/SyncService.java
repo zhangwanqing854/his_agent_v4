@@ -8,7 +8,11 @@ import com.hospital.handover.dto.BatchSyncResultDto;
 import com.hospital.handover.dto.SyncItemResultDto;
 import com.hospital.handover.dto.SyncResultDto;
 import com.hospital.handover.entity.*;
+import com.hospital.handover.entity.VitalSign;
+import com.hospital.handover.entity.DeptPatientOverview;
 import com.hospital.handover.repository.*;
+import com.hospital.handover.repository.VitalSignRepository;
+import com.hospital.handover.repository.DeptPatientOverviewRepository;
 import com.hospital.handover.util.EntityFieldMapper;
 import com.hospital.handover.util.FieldMappingProcessor;
 import com.hospital.handover.util.SoapClient;
@@ -23,6 +27,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class SyncService {
 
     private static final Logger logger = LoggerFactory.getLogger(SyncService.class);
@@ -45,6 +50,8 @@ public class SyncService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final DoctorDepartmentRepository doctorDepartmentRepository;
+    private final VitalSignRepository vitalSignRepository;
+    private final DeptPatientOverviewRepository deptPatientOverviewRepository;
 
     public SyncService(InterfaceConfigRepository configRepository,
                        InterfaceMappingTableRepository mappingTableRepository,
@@ -62,7 +69,9 @@ public class SyncService {
                        OrderItemRepository orderItemRepository,
                        UserRepository userRepository,
                        RoleRepository roleRepository,
-                       DoctorDepartmentRepository doctorDepartmentRepository) {
+                       DoctorDepartmentRepository doctorDepartmentRepository,
+                       VitalSignRepository vitalSignRepository,
+                       DeptPatientOverviewRepository deptPatientOverviewRepository) {
         this.configRepository = configRepository;
         this.mappingTableRepository = mappingTableRepository;
         this.fieldMappingRepository = fieldMappingRepository;
@@ -80,6 +89,8 @@ public class SyncService {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.doctorDepartmentRepository = doctorDepartmentRepository;
+        this.vitalSignRepository = vitalSignRepository;
+        this.deptPatientOverviewRepository = deptPatientOverviewRepository;
     }
 
     public SyncResultDto executeSync(Long configId, String deptCode) {
@@ -138,17 +149,47 @@ public class SyncService {
             }
 
             if (!responseData.isArray()) {
-                result.setSuccess(true);
-                result.setMessage("HIS接口返回数据格式非数组，但同步完成");
-                totalCount = 0;
-                config.setLastSyncTime(LocalDateTime.now());
-                config.setLastSyncStatus("SUCCESS");
-                config.setLastSyncCount(0);
-                if (config.getIsFirstSync()) {
-                    config.setIsFirstSync(false);
+                InterfaceMappingTable mainMappingForPath = mappingTables.stream()
+                    .filter(t -> t.getParentMappingId() == null)
+                    .findFirst()
+                    .orElse(null);
+                
+                if (mainMappingForPath != null && mainMappingForPath.getDataPath() != null && !mainMappingForPath.getDataPath().isEmpty()) {
+                    String dataPath = mainMappingForPath.getDataPath();
+                    JsonNode pathData = responseData.get(dataPath);
+                    
+                    if (pathData != null) {
+                        if (pathData.isArray()) {
+                            responseData = pathData;
+                            logger.info("从响应中提取 dataPath '{}' 数据，数组大小: {}", dataPath, responseData.size());
+                        } else {
+                            ObjectMapper mapper = new ObjectMapper();
+                            ArrayNode arrayNode = mapper.createArrayNode();
+                            arrayNode.add(pathData);
+                            responseData = arrayNode;
+                            logger.info("从响应中提取 dataPath '{}' 数据，转换为数组", dataPath);
+                        }
+                    } else {
+                        logger.warn("HIS接口返回数据格式非数组且未找到 dataPath '{}' 字段", dataPath);
+                        result.setSuccess(true);
+                        result.setMessage("HIS接口返回数据格式非数组且未找到指定数据路径");
+                        totalCount = 0;
+                        config.setLastSyncTime(LocalDateTime.now());
+                        config.setLastSyncStatus("SUCCESS");
+                        config.setLastSyncCount(0);
+                        if (config.getIsFirstSync()) {
+                            config.setIsFirstSync(false);
+                        }
+                        configRepository.save(config);
+                        return result;
+                    }
+                } else {
+                    ObjectMapper mapper = new ObjectMapper();
+                    ArrayNode arrayNode = mapper.createArrayNode();
+                    arrayNode.add(responseData);
+                    responseData = arrayNode;
+                    logger.info("HIS接口返回单个对象，转换为数组处理");
                 }
-                configRepository.save(config);
-                return result;
             }
 
             if (responseData.size() == 0) {
@@ -300,6 +341,10 @@ public class SyncService {
         SyncStats stats = new SyncStats();
         String targetTable = mainMapping.getTargetTable();
 
+        if ("vital_signs".equals(targetTable)) {
+            return processVitalSignsBatch(responseData, mainFieldMappings, stats);
+        }
+
         for (JsonNode record : responseData) {
             stats.totalCount++;
             
@@ -331,6 +376,9 @@ public class SyncService {
                     case "doctor_department":
                         processDoctorDepartment(mappedData, stats);
                         break;
+                    case "dept_patient_overview":
+                        processDeptPatientOverview(mappedData, stats);
+                        break;
                     default:
                         logger.warn("Unknown target table: {}", targetTable);
                         stats.skipCount++;
@@ -343,6 +391,85 @@ public class SyncService {
 
         if ("doctor_department".equals(targetTable)) {
             cleanupDoctorDepartments();
+        }
+
+        return stats;
+    }
+
+    private SyncStats processVitalSignsBatch(JsonNode responseData, 
+                                              List<InterfaceFieldMapping> mainFieldMappings,
+                                              SyncStats stats) {
+        List<VitalSign> vitalSignsToInsert = new ArrayList<>();
+
+        logger.info("开始处理生命体征数据: responseData.size={}, fieldMappings.size={}", 
+            responseData.size(), mainFieldMappings.size());
+        
+        for (InterfaceFieldMapping mapping : mainFieldMappings) {
+            logger.info("字段映射: source={}, target={}, transform={}", 
+                mapping.getSourceField(), mapping.getTargetField(), mapping.getTransformType());
+        }
+
+        for (JsonNode record : responseData) {
+            stats.totalCount++;
+            logger.info("处理记录 {}: {}", stats.totalCount, record.toString());
+            
+            try {
+                Map<String, Object> mappedData = FieldMappingProcessor.processRecord(record, mainFieldMappings);
+                logger.info("映射后数据: {}", mappedData);
+                
+                String hisId = (String) mappedData.get("his_id");
+                if (hisId == null || hisId.isEmpty()) {
+                    logger.warn("his_id 为空，跳过此记录");
+                    stats.skipCount++;
+                    continue;
+                }
+                
+                if (vitalSignRepository.existsByHisId(hisId)) {
+                    logger.info("his_id 已存在，跳过: {}", hisId);
+                    stats.skipCount++;
+                    continue;
+                }
+
+                String patientNo = (String) mappedData.get("patient_no");
+                if (patientNo == null || patientNo.isEmpty()) {
+                    logger.warn("patient_no 为空，跳过此记录");
+                    stats.skipCount++;
+                    continue;
+                }
+
+                VitalSign vitalSign = new VitalSign();
+                vitalSign.setHisId(hisId);
+                vitalSign.setPatientNo(patientNo);
+                vitalSign.setSignType((String) mappedData.getOrDefault("sign_type", ""));
+                vitalSign.setSignValue((String) mappedData.get("sign_value"));
+                vitalSign.setSignUnit((String) mappedData.get("sign_unit"));
+                vitalSign.setSyncedAt(LocalDateTime.now());
+                
+                if (mappedData.get("recorded_at") != null) {
+                    try {
+                        if (mappedData.get("recorded_at") instanceof LocalDateTime) {
+                            vitalSign.setRecordedAt((LocalDateTime) mappedData.get("recorded_at"));
+                        } else if (mappedData.get("recorded_at") instanceof String) {
+                            String dateStr = (String) mappedData.get("recorded_at");
+                            vitalSign.setRecordedAt(LocalDateTime.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                        }
+                    } catch (Exception e) {
+                        logger.warn("Failed to parse recorded_at: {}", mappedData.get("recorded_at"));
+                    }
+                }
+                
+                vitalSignsToInsert.add(vitalSign);
+                stats.insertCount++;
+                
+            } catch (Exception e) {
+                logger.error("Error processing vital_sign record: {} - {}", e.getClass().getSimpleName(), e.getMessage(), e);
+                stats.failCount++;
+            }
+        }
+
+        if (!vitalSignsToInsert.isEmpty()) {
+            vitalSignRepository.saveAll(vitalSignsToInsert);
+            logger.info("保存生命体征数据成功: {} 条", vitalSignsToInsert.size());
         }
 
         return stats;
@@ -1007,6 +1134,39 @@ public class SyncService {
         logger.info("Recalculating is_primary for all doctor_department records");
         int updated = doctorDepartmentRepository.recalculateIsPrimary();
         logger.info("Completed is_primary recalculation, {} records updated", updated);
+    }
+    
+    private void processDeptPatientOverview(Map<String, Object> data, SyncStats stats) {
+        String deptCode = (String) data.get("dept_code");
+        if (deptCode == null || deptCode.isEmpty()) {
+            stats.skipCount++;
+            return;
+        }
+        
+        Optional<DeptPatientOverview> existing = deptPatientOverviewRepository.findByDeptCode(deptCode);
+        
+        DeptPatientOverview overview;
+        if (existing.isPresent()) {
+            overview = existing.get();
+            stats.updateCount++;
+        } else {
+            overview = new DeptPatientOverview();
+            overview.setDeptCode(deptCode);
+            stats.insertCount++;
+        }
+        
+        overview.setDeptId((String) data.get("dept_id"));
+        overview.setTotalNum(data.get("total_num") != null ? ((Number) data.get("total_num")).intValue() : 0);
+        overview.setNewInHos(data.get("new_in_hos") != null ? ((Number) data.get("new_in_hos")).intValue() : 0);
+        overview.setDiseNum(data.get("dise_num") != null ? ((Number) data.get("dise_num")).intValue() : 0);
+        overview.setDeathNum(data.get("death_num") != null ? ((Number) data.get("death_num")).intValue() : 0);
+        overview.setOutNum(data.get("out_num") != null ? ((Number) data.get("out_num")).intValue() : 0);
+        overview.setSurgNum(data.get("surg_num") != null ? ((Number) data.get("surg_num")).intValue() : 0);
+        overview.setTransIn(data.get("trans_in") != null ? ((Number) data.get("trans_in")).intValue() : 0);
+        overview.setTransOut(data.get("trans_out") != null ? ((Number) data.get("trans_out")).intValue() : 0);
+        overview.setSyncedAt(LocalDateTime.now());
+        
+        deptPatientOverviewRepository.save(overview);
     }
     
     public BatchSyncResultDto executeBatchSync(String deptCode) {

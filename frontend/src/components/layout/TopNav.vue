@@ -11,6 +11,7 @@
         v-model="currentDeptId"
         class="dept-selector"
         size="small"
+        filterable
         @change="handleDepartmentChange"
       >
         <el-option

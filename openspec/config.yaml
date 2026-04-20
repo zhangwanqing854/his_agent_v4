@@ -203,6 +203,140 @@ execution:
   # 执行模式：严格顺序执行
   mode: "sequential"
   
+  # 提案实现完成后自动重启前后端
+  afterApply:
+    enabled: true
+    action: "restart_services"
+    description: "每次提案实现完成后，必须重启前后端服务以验证修改效果"
+    
+    # 重要说明：不是检查前后端是否启动，而是强制重启
+    # 即使前后端已经在运行，也要先停止再启动
+    forceRestart: true
+    
+    # 重启服务配置
+    restartServices:
+      # 前端服务重启
+      frontend:
+        enabled: true
+        port: 3000
+        processName: "node"
+        stopCommand: "lsof -ti :3000 | xargs kill -9 2>/dev/null || pkill -f 'npm run dev' 2>/dev/null || true"
+        startCommand: "cd frontend && nohup npm run dev > /tmp/frontend.log 2>&1 &"
+        waitTime: 6
+        verifyCommand: "curl -k -s https://localhost:3000 2>/dev/null | head -c 50"
+        verifySuccessPattern: "<!DOCTYPE html"
+        description: "强制重启 Vite 前端开发服务器"
+      
+      # 后端服务重启
+      backend:
+        enabled: true
+        port: 8080
+        processName: "java"
+        stopCommand: "lsof -ti :8080 | xargs kill -9 2>/dev/null || pkill -f 'mvn spring-boot' 2>/dev/null || true"
+        startCommand: "cd backend && nohup mvn spring-boot:run -Dmaven.test.skip=true > /tmp/backend.log 2>&1 &"
+        waitTime: 12
+        verifyCommand: "curl -s http://localhost:8080/api/departments 2>/dev/null | head -c 50"
+        verifySuccessPattern: '{"code":0'
+        description: "强制重启 Spring Boot 后端服务"
+    
+    # 重启顺序：先停后启，先启后端再启前端
+    sequence:
+      - step: 1
+        action: "stop_all"
+        description: "强制停止所有前后端服务"
+        commands:
+          - "lsof -ti :8080 | xargs kill -9 2>/dev/null || true"
+          - "lsof -ti :3000 | xargs kill -9 2>/dev/null || true"
+          - "pkill -f 'mvn spring-boot' 2>/dev/null || true"
+          - "pkill -f 'npm run dev' 2>/dev/null || true"
+      - step: 2
+        action: "wait_stop"
+        description: "等待服务完全停止"
+        waitTime: 3
+      - step: 3
+        action: "start_backend"
+        description: "启动后端服务"
+      - step: 4
+        action: "wait_backend"
+        description: "等待后端启动完成"
+        waitTime: 12
+      - step: 5
+        action: "verify_backend"
+        description: "验证后端启动成功（必须返回有效响应）"
+        verify:
+          command: "curl -s http://localhost:8080/api/departments"
+          successPattern: '{"code":0'
+          onFailure: "restart_backend"
+      - step: 6
+        action: "start_frontend"
+        description: "启动前端服务"
+      - step: 7
+        action: "wait_frontend"
+        description: "等待前端启动完成"
+        waitTime: 6
+      - step: 8
+        action: "verify_frontend"
+        description: "验证前端启动成功（必须返回 HTML）"
+        verify:
+          command: "curl -k -s https://localhost:3000"
+          successPattern: "<!DOCTYPE html"
+          onFailure: "restart_frontend"
+      - step: 9
+        action: "verify_complete"
+        description: "确认前后端都启动成功"
+    
+    # 验证失败处理：必须重新启动直到成功
+    onVerifyFailure:
+      maxRetries: 3
+      actions:
+        - step: 1
+          action: "check_port"
+          description: "检查端口是否被占用"
+          command: "lsof -i :8080 -i :3000"
+        - step: 2
+          action: "force_kill"
+          description: "强制杀死所有相关进程"
+          commands:
+            - "lsof -ti :8080 | xargs kill -9 2>/dev/null || true"
+            - "lsof -ti :3000 | xargs kill -9 2>/dev/null || true"
+        - step: 3
+          action: "wait_clean"
+          description: "等待端口释放"
+          waitTime: 3
+        - step: 4
+          action: "restart_backend"
+          description: "重新启动后端"
+        - step: 5
+          action: "restart_frontend"
+          description: "重新启动前端"
+        - step: 6
+          action: "verify_again"
+          description: "再次验证启动成功"
+    
+    # 重启失败处理
+    onFailure:
+      maxRetries: 3
+      actions:
+        - step: 1
+          action: "check_port_conflict"
+          description: "检查端口是否被其他进程占用"
+        - step: 2
+          action: "force_kill"
+          description: "强制杀死占用端口的进程"
+        - step: 3
+          action: "restart"
+          description: "重新启动服务"
+    
+    # 规则说明（严格执行）
+    rules:
+      - "/opsx-apply 成功后必须重启前后端，不是检查是否启动"
+      - "重启 = 先停止再启动，必须强制停止所有相关进程"
+      - "重启后必须验证启动成功，验证失败必须重新启动"
+      - "验证成功的标准：后端返回有效JSON响应，前端返回HTML"
+      - "不要假设服务已启动，必须通过实际API调用验证"
+      - "如果验证失败，不要停止，继续启动直到成功"
+      - "最多重试3次，超过后报告错误等待人工介入"
+  
   # 任务状态流转
   workflow:
     states:
