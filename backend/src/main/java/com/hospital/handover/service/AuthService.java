@@ -112,6 +112,31 @@ public class AuthService {
     }
 
     private List<DepartmentInfo> getUserDepartments(Long userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return new ArrayList<>();
+        }
+        
+        if (Boolean.TRUE.equals(user.getIsSuperAdmin())) {
+            List<Department> allDepartments = departmentRepository.findAll();
+            List<DepartmentInfo> departments = new ArrayList<>();
+            
+            for (Department dept : allDepartments) {
+                departments.add(new DepartmentInfo(
+                    dept.getId(),
+                    dept.getCode(),
+                    dept.getName(),
+                    false
+                ));
+            }
+            
+            if (!departments.isEmpty()) {
+                departments.get(0).setIsPrimary(true);
+            }
+            
+            return departments;
+        }
+        
         List<DoctorDepartment> doctorDepts = doctorDepartmentRepository.findAll();
         List<DepartmentInfo> departments = new ArrayList<>();
         
