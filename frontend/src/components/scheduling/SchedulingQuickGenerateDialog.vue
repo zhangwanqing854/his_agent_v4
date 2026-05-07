@@ -18,7 +18,7 @@
         <div class="staff-order-list" v-if="orderedStaff.length > 0">
           <div 
             v-for="(staff, index) in orderedStaff" 
-            :key="staff.id"
+            :key="staff.staffId"
             class="staff-item"
           >
             <el-button 
@@ -30,7 +30,7 @@
             >
               ↑
             </el-button>
-            <span class="staff-name">{{ staff.name }}</span>
+            <span class="staff-name">{{ staff.staffName }}</span>
             <el-button 
               v-if="index < orderedStaff.length - 1"
               type="primary" 
@@ -69,10 +69,10 @@
         <el-radio-group v-model="form.startPosition">
           <el-radio 
             v-for="(staff, index) in orderedStaff" 
-            :key="staff.id"
+            :key="staff.staffId"
             :value="index"
           >
-            从第{{ index + 1 }}位开始（{{ staff.name }}）
+            从第{{ index + 1 }}位开始（{{ staff.staffName }}）
           </el-radio>
         </el-radio-group>
       </el-form-item>
@@ -101,11 +101,11 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
-  fetchSchedulingStaff,
+  fetchDutyStaff,
   fetchSchedulingConfig,
   updateSchedulingConfig,
   autoGenerateScheduling,
-  type Staff,
+  type DutyStaff,
   type SchedulingConfig,
   type SchedulingDetail
 } from '@/api/scheduling'
@@ -130,9 +130,9 @@ const visible = computed({
 })
 
 const loading = ref(false)
-const staffList = ref<Staff[]>([])
+const staffList = ref<DutyStaff[]>([])
 const config = ref<SchedulingConfig | null>(null)
-const orderedStaff = ref<Staff[]>([])
+const orderedStaff = ref<DutyStaff[]>([])
 
 const form = reactive({
   startDate: '',
@@ -145,34 +145,27 @@ const isFirstScheduling = computed(() => config.value?.lastPosition === null)
 const lastMonthStaffName = computed(() => {
   if (!config.value || config.value.lastPosition === null) return null
   const staffId = config.value.staffOrder[config.value.lastPosition]
-  return staffList.value.find(s => s.id === staffId)?.name || null
+  return staffList.value.find(s => s.staffId === staffId)?.staffName || null
 })
 
 const nextStaffName = computed(() => {
   if (!config.value || config.value.lastPosition === null) return null
   const nextPosition = (config.value.lastPosition + 1) % config.value.staffOrder.length
   const staffId = config.value.staffOrder[nextPosition]
-  return staffList.value.find(s => s.id === staffId)?.name || null
+  return staffList.value.find(s => s.staffId === staffId)?.staffName || null
 })
 
 const loadData = async () => {
   try {
-    const staffRes = await fetchSchedulingStaff()
+    const staffRes = await fetchDutyStaff()
     if (staffRes.code === 0) {
       staffList.value = staffRes.data
+      orderedStaff.value = [...staffList.value].sort((a, b) => a.displayOrder - b.displayOrder)
     }
 
     const configRes = await fetchSchedulingConfig()
     if (configRes.code === 0) {
       config.value = configRes.data
-      
-      if (configRes.data.staffOrder.length > 0) {
-        orderedStaff.value = configRes.data.staffOrder
-          .map(id => staffList.value.find(s => s.id === id))
-          .filter(Boolean) as Staff[]
-      } else {
-        orderedStaff.value = [...staffList.value]
-      }
     }
   } catch (error) {
     console.error('加载配置失败:', error)
@@ -181,7 +174,7 @@ const loadData = async () => {
 
 const initForm = () => {
   const [year, month] = props.yearMonth.split('-')
-  const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate()
+  const daysInMonth = new Date(parseInt(year!), parseInt(month!), 0).getDate()
   
   form.startDate = `${props.yearMonth}-01`
   form.endDate = `${props.yearMonth}-${daysInMonth.toString().padStart(2, '0')}`
@@ -198,21 +191,22 @@ onMounted(() => {
 
 watch(visible, (val) => {
   if (val) {
+    loadData()
     initForm()
   }
 })
 
 const moveUp = (index: number) => {
   if (index <= 0) return
-  const temp = orderedStaff.value[index]
-  orderedStaff.value[index] = orderedStaff.value[index - 1]
+  const temp = orderedStaff.value[index]!
+  orderedStaff.value[index] = orderedStaff.value[index - 1]!
   orderedStaff.value[index - 1] = temp
 }
 
 const moveDown = (index: number) => {
   if (index >= orderedStaff.value.length - 1) return
-  const temp = orderedStaff.value[index]
-  orderedStaff.value[index] = orderedStaff.value[index + 1]
+  const temp = orderedStaff.value[index]!
+  orderedStaff.value[index] = orderedStaff.value[index + 1]!
   orderedStaff.value[index + 1] = temp
 }
 
@@ -230,7 +224,7 @@ const handleGenerate = async () => {
   loading.value = true
 
   try {
-    const staffOrder = orderedStaff.value.map(s => s.id)
+    const staffOrder = orderedStaff.value.map(s => s.staffId)
     
     await updateSchedulingConfig(staffOrder)
     

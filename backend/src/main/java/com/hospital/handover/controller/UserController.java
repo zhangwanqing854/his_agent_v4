@@ -2,6 +2,7 @@ package com.hospital.handover.controller;
 
 import com.hospital.handover.dto.*;
 import com.hospital.handover.service.UserService;
+import com.hospital.handover.util.JwtUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,9 +13,11 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final JwtUtil jwtUtil;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, JwtUtil jwtUtil) {
         this.userService = userService;
+        this.jwtUtil = jwtUtil;
     }
 
     @GetMapping
@@ -54,9 +57,15 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<UserDto>> updateUser(
             @PathVariable Long id,
-            @RequestBody UserUpdateRequest request) {
+            @RequestBody UserUpdateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            UserDto user = userService.updateUser(id, request);
+            Long operatorId = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                operatorId = jwtUtil.getUserIdFromToken(token);
+            }
+            UserDto user = userService.updateUserWithOperator(id, request, operatorId);
             return ResponseEntity.ok(ApiResponse.success("更新成功", user));
         } catch (RuntimeException e) {
             return ResponseEntity.ok(ApiResponse.error(e.getMessage()));

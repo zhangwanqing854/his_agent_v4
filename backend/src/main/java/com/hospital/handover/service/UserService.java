@@ -73,6 +73,10 @@ public class UserService {
     }
 
     public UserDto updateUser(Long id, UserUpdateRequest request) {
+        return updateUserWithOperator(id, request, null);
+    }
+    
+    public UserDto updateUserWithOperator(Long id, UserUpdateRequest request, Long operatorId) {
         Optional<User> optional = userRepository.findById(id);
         
         if (optional.isEmpty()) {
@@ -80,6 +84,30 @@ public class UserService {
         }
         
         User user = optional.get();
+        
+        if (request.getIsSuperAdmin() != null) {
+            if (operatorId == null) {
+                throw new RuntimeException("修改超级管理员状态需要操作者身份");
+            }
+            
+            Optional<User> operatorOpt = userRepository.findById(operatorId);
+            if (operatorOpt.isEmpty() || !operatorOpt.get().getIsSuperAdmin()) {
+                throw new RuntimeException("只有超级管理员可以修改其他用户的超管状态");
+            }
+            
+            if (operatorId.equals(id)) {
+                throw new RuntimeException("不能修改自己的超级管理员状态");
+            }
+            
+            if (!request.getIsSuperAdmin() && user.getIsSuperAdmin()) {
+                long superAdminCount = userRepository.countByIsSuperAdmin(true);
+                if (superAdminCount <= 1) {
+                    throw new RuntimeException("不能移除最后一个超级管理员");
+                }
+            }
+            
+            user.setIsSuperAdmin(request.getIsSuperAdmin());
+        }
         
         if (request.getUsername() != null && !request.getUsername().isEmpty()) {
             User existing = userRepository.findByUsername(request.getUsername());
@@ -173,6 +201,7 @@ public class UserService {
         UserDto dto = new UserDto();
         dto.setId(user.getId());
         dto.setUsername(user.getUsername());
+        dto.setUsercode(user.getUsercode());
         dto.setIsSuperAdmin(user.getIsSuperAdmin());
         dto.setHisStaffId(user.getHisStaffId());
         dto.setRoleId(user.getRoleId());

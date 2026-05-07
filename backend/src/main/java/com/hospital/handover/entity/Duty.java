@@ -17,8 +17,8 @@ public class Duty {
     @Column(nullable = false, unique = true, length = 50)
     private String code;
     
-    @Column(name = "permission_id", nullable = false)
-    private Long permissionId;
+    @Column(length = 200)
+    private String description;
     
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -37,9 +37,9 @@ public class Duty {
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
     
-    public Long getPermissionId() { return permissionId; }
-    public void setPermissionId(Long permissionId) { this.permissionId = permissionId; }
-    
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 }

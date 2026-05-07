@@ -92,7 +92,8 @@ const isSyncing = ref(true)
 
 const syncItems = ref<SyncItem[]>([
   { name: 'HIS诊断信息同步', status: 'pending' },
-  { name: 'HIS医嘱信息同步', status: 'pending' }
+  { name: 'HIS医嘱信息同步', status: 'pending' },
+  { name: 'HIS科室患者信息总览同步', status: 'pending' }
 ])
 
 const currentSyncIndex = ref(0)
@@ -111,8 +112,10 @@ const cleanupOverlays = () => {
 watch(
   () => props.modelValue,
   (val) => {
+    console.log('[SyncProgressDialog] props.modelValue changed:', val)
     visible.value = val
     if (val) {
+      console.log('[SyncProgressDialog] calling startSync()')
       startSync()
     }
   },
@@ -188,13 +191,13 @@ const startSync = async () => {
   
   // 调用后端批量同步 API，添加超时控制
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 30000) // 30秒超时
+  const timeoutId = setTimeout(() => controller.abort(), 30000)
   
   // 获取 token 用于认证
   const token = localStorage.getItem('token')
 
   try {
-    const response = await fetch(`/api/sync/execute-batch?deptCode=${encodeURIComponent(deptCode)}`, {
+    const response = await fetch(`/api/sync/execute-batch?deptCode=${encodeURIComponent(deptCode)}&syncType=DEPT_SWITCH`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

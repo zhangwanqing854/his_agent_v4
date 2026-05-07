@@ -1,5 +1,6 @@
 import request from './request'
 import type { ApiResponse } from './request'
+import type { Duty } from '@/types/user'
 import { users as mockUsers } from '@/mock/user'
 
 export interface Department {
@@ -18,11 +19,15 @@ export interface LoginParams {
 
 export interface UserInfo {
   id: number
+  hisStaffId: number | null
   username: string
+  usercode: string
   name: string
   role: string
   avatar: string
+  isSuperAdmin: boolean
   departments: Department[]
+  duties?: Duty[]
 }
 
 export interface LoginResponse {
@@ -51,21 +56,25 @@ export async function loginApi(params: LoginParams): Promise<ApiResponse<LoginRe
       }
     }
     
-    return {
-      code: 0,
-      message: '登录成功',
-      data: {
-        token: 'mock-token-' + user.id,
-        userInfo: {
-          id: user.id,
-          username: user.username,
-          name: user.username,
-          role: user.role?.name || '',
-          avatar: '',
-          departments: []
+return {
+        code: 0,
+        message: '登录成功',
+        data: {
+          token: 'mock-token-' + user.id,
+          userInfo: {
+            id: user.id,
+            hisStaffId: user.hisStaffId,
+            username: user.username,
+            usercode: user.usercode,
+            name: user.username,
+            role: user.role?.name || '',
+            avatar: '',
+            isSuperAdmin: user.isSuperAdmin,
+            departments: [],
+            duties: user.role?.duties || []
+          }
         }
       }
-    }
   }
   return request.post('/auth/login', params) as Promise<ApiResponse<LoginResponse>>
 }

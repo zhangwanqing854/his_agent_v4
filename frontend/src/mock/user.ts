@@ -1,57 +1,18 @@
-import type { User, Role, Permission, Duty } from '@/types/user'
-
-// 权限定义
-export const permissions: Permission[] = [
-  { id: 1, code: 'HANDOVER', name: '交班管理', description: '交班记录管理相关功能' },
-  { id: 2, code: 'PATIENT', name: '患者管理', description: '患者信息管理相关功能' },
-  { id: 3, code: 'TODO', name: '待办事项', description: '待办事项管理相关功能' },
-  { id: 4, code: 'STATISTICS', name: '统计分析', description: '统计数据查看相关功能' },
-  { id: 5, code: 'USER_MANAGE', name: '用户管理', description: '用户账号管理相关功能' },
-  { id: 6, code: 'ROLE_MANAGE', name: '角色权限', description: '角色权限管理相关功能' },
-  { id: 7, code: 'SYSTEM_SETTINGS', name: '系统设置', description: '系统配置管理相关功能' }
-]
+import type { User, Role, Duty } from '@/types/user'
 
 // 职责定义（对应具体功能）
 export const duties: Duty[] = [
-  // 交班管理
-  { id: 1, code: 'HANDOVER_VIEW', name: '查看交班记录', description: '查看交班记录列表和详情', permissionId: 1 },
-  { id: 2, code: 'HANDOVER_CREATE', name: '发起交班', description: '创建新的交班记录', permissionId: 1 },
-  { id: 3, code: 'HANDOVER_EDIT', name: '编辑交班记录', description: '编辑交班记录内容', permissionId: 1 },
-  { id: 4, code: 'HANDOVER_DELETE', name: '删除交班记录', description: '删除交班记录', permissionId: 1 },
-  { id: 5, code: 'HANDOVER_REVIEW', name: '审核交班', description: '审核交班记录', permissionId: 1 },
-  
-  // 患者管理
-  { id: 10, code: 'PATIENT_VIEW', name: '查看患者信息', description: '查看患者列表和详情', permissionId: 2 },
-  { id: 11, code: 'PATIENT_EXPORT', name: '导出患者数据', description: '导出患者信息', permissionId: 2 },
-  
-  // 待办事项
-  { id: 20, code: 'TODO_VIEW', name: '查看待办事项', description: '查看待办事项列表', permissionId: 3 },
-  { id: 21, code: 'TODO_HANDLE', name: '处理待办事项', description: '处理待办事项', permissionId: 3 },
-  
-  // 统计分析
-  { id: 30, code: 'STATISTICS_VIEW', name: '查看统计报表', description: '查看统计报表', permissionId: 4 },
-  { id: 31, code: 'STATISTICS_EXPORT', name: '导出统计报表', description: '导出统计数据', permissionId: 4 },
-  
-  // 用户管理
-  { id: 40, code: 'USER_VIEW', name: '查看用户列表', description: '查看用户列表和详情', permissionId: 5 },
-  { id: 41, code: 'USER_CREATE', name: '新增用户', description: '创建新用户账号', permissionId: 5 },
-  { id: 42, code: 'USER_EDIT', name: '编辑用户', description: '编辑用户信息', permissionId: 5 },
-  { id: 43, code: 'USER_DELETE', name: '删除用户', description: '删除用户账号', permissionId: 5 },
-  { id: 44, code: 'USER_ENABLE', name: '启用/禁用用户', description: '启用或禁用用户账号', permissionId: 5 },
-  { id: 45, code: 'USER_RESET_PWD', name: '重置密码', description: '重置用户密码', permissionId: 5 },
-  
-  // 角色权限管理
-  { id: 50, code: 'ROLE_VIEW', name: '查看角色列表', description: '查看角色列表和详情', permissionId: 6 },
-  { id: 51, code: 'ROLE_CREATE', name: '新增角色', description: '创建新角色', permissionId: 6 },
-  { id: 52, code: 'ROLE_EDIT', name: '编辑角色', description: '编辑角色信息', permissionId: 6 },
-  { id: 53, code: 'ROLE_DELETE', name: '删除角色', description: '删除角色', permissionId: 6 },
-  { id: 54, code: 'ROLE_ASSIGN_DUTY', name: '分配职责', description: '为角色分配职责', permissionId: 6 },
-  
-  // 系统设置
-  { id: 60, code: 'SETTINGS_VIEW', name: '查看系统配置', description: '查看系统配置', permissionId: 7 },
-  { id: 61, code: 'SETTINGS_EDIT', name: '修改系统配置', description: '修改系统配置', permissionId: 7 },
-  { id: 62, code: 'INTERFACE_CONFIG', name: '接口配置管理', description: '管理接口配置', permissionId: 7 },
-  { id: 63, code: 'INTERFACE_SYNC', name: '数据同步', description: '执行数据同步', permissionId: 7 }
+  { id: 1, code: 'HANDOVER_MANAGEMENT', name: '交班管理', description: '交班记录管理' },
+  { id: 2, code: 'PATIENT_MANAGEMENT', name: '患者管理', description: '患者信息管理' },
+  { id: 3, code: 'TODO_MANAGEMENT', name: '待办事项', description: '待办事项管理' },
+  { id: 4, code: 'SCHEDULING_MANAGEMENT', name: '科室排班', description: '科室排班管理' },
+  { id: 5, code: 'STATISTICS_MANAGEMENT', name: '统计分析', description: '统计数据查看' },
+  { id: 6, code: 'USER_MANAGEMENT', name: '用户管理', description: '用户账号管理' },
+  { id: 7, code: 'STAFF_MANAGEMENT', name: '人员管理', description: 'HIS人员管理' },
+  { id: 8, code: 'DEPARTMENT_MANAGEMENT', name: '科室管理', description: '科室信息管理' },
+  { id: 9, code: 'ROLE_MANAGEMENT', name: '角色权限', description: '角色权限管理' },
+  { id: 10, code: 'SYSTEM_SETTINGS', name: '系统设置', description: '系统配置管理' },
+  { id: 11, code: 'DOCTOR_DEPARTMENT_MANAGEMENT', name: '科室人员管理', description: '科室人员关系配置管理' }
 ]
 
 // 角色定义
@@ -62,7 +23,7 @@ export const roles: Role[] = [
     code: 'SUPER_ADMIN', 
     isDefault: false, 
     description: '系统超级管理员，拥有所有权限',
-    duties: duties // 拥有所有职责
+    duties: duties
   },
   { 
     id: 2, 
@@ -70,23 +31,15 @@ export const roles: Role[] = [
     code: 'DOCTOR', 
     isDefault: true, 
     description: '普通医生角色',
-    duties: duties.filter(d => [1, 2, 3, 4, 10, 11, 20, 21, 30, 31].includes(d.id))
+    duties: duties.filter(d => [1, 2, 3, 4, 11].includes(d.id))
   },
   { 
     id: 3, 
-    name: '科室主任', 
-    code: 'DEPT_HEAD', 
+    name: '护士', 
+    code: 'NURSE', 
     isDefault: false, 
-    description: '科室主任角色',
-    duties: duties.filter(d => [1, 2, 3, 4, 5, 10, 11, 20, 21, 30, 31, 40, 44].includes(d.id))
-  },
-  { 
-    id: 4, 
-    name: '系统管理员', 
-    code: 'SYSTEM_ADMIN', 
-    isDefault: false, 
-    description: '系统管理员，负责用户和权限管理',
-    duties: duties.filter(d => d.permissionId >= 5) // 用户管理、角色权限、系统设置相关职责
+    description: '护士角色',
+    duties: duties.filter(d => [1, 2, 3, 4, 5, 6, 11].includes(d.id))
   }
 ]
 
@@ -222,6 +175,8 @@ export function updateUser(id: number, data: Partial<Omit<User, 'id' | 'createdA
   if (index === -1) return null
   
   const user = users[index]
+  if (!user) return null
+  
   const role = data.roleId !== undefined ? roles.find(r => r.id === data.roleId) : user.role
   const hisStaff = data.hisStaffId !== undefined 
     ? (data.hisStaffId ? hisStaffList.find(s => s.id === data.hisStaffId) : undefined)
@@ -234,7 +189,7 @@ export function updateUser(id: number, data: Partial<Omit<User, 'id' | 'createdA
     role,
     hisStaff
   }
-  return users[index]
+  return users[index] ?? null
 }
 
 export function deleteUser(id: number): boolean {
@@ -318,6 +273,7 @@ export function updateRole(id: number, data: Partial<{ name: string; code: strin
   if (index === -1) return null
   
   const role = roles[index]
+  if (!role) return null
   
   // 超级管理员不能修改
   if (role.code === 'SUPER_ADMIN') return null
@@ -327,7 +283,7 @@ export function updateRole(id: number, data: Partial<{ name: string; code: strin
     ...data,
     duties: data.dutyIds ? duties.filter(d => data.dutyIds!.includes(d.id)) : role.duties
   }
-  return roles[index]
+  return roles[index] ?? null
 }
 
 export function deleteRole(id: number): boolean {
@@ -355,33 +311,10 @@ export function checkRoleCodeExists(code: string, excludeId?: number): boolean {
 
 // ==================== 权限相关函数 ====================
 
-export function getPermissionList(): Permission[] {
-  return permissions.map(perm => ({
-    ...perm,
-    duties: duties.filter(d => d.permissionId === perm.id)
-  }))
-}
-
-export function getPermissionById(id: number): Permission | null {
-  const perm = permissions.find(p => p.id === id)
-  if (!perm) return null
-  return {
-    ...perm,
-    duties: duties.filter(d => d.permissionId === perm.id)
-  }
-}
-
 // ==================== 职责相关函数 ====================
 
 export function getDutyList(): Duty[] {
-  return duties.map(duty => ({
-    ...duty,
-    permission: permissions.find(p => p.id === duty.permissionId)
-  }))
-}
-
-export function getDutiesByPermissionId(permissionId: number): Duty[] {
-  return duties.filter(d => d.permissionId === permissionId)
+  return [...duties]
 }
 
 export function getDutiesByRoleId(roleId: number): Duty[] {

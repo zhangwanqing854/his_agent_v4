@@ -80,10 +80,16 @@ public class FieldMappingProcessor {
         
         String[] patterns = {
             "yyyy-MM-dd HH:mm:ss",
+            "yyyy-M-d H:mm:ss",
+            "yyyy-M-d H:mm",
             "yyyy-MM-dd'T'HH:mm:ss",
             "yyyy-MM-dd",
+            "yyyy-M-d",
             "yyyy/MM/dd HH:mm:ss",
-            "yyyy/MM/dd"
+            "yyyy/M/d H:mm:ss",
+            "yyyy/M/d H:mm",
+            "yyyy/MM/dd",
+            "yyyy/M/d"
         };
         
         for (String pattern : patterns) {

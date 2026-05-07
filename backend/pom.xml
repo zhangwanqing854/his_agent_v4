@@ -103,12 +103,19 @@
             <version>0.3.45</version>
         </dependency>
         
-        <!-- WebSocket -->
+<!-- WebSocket -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
-     </dependencies>
+        
+        <!-- Apache Commons CSV -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.10.0</version>
+        </dependency>
+      </dependencies>
     
     <build>
         <plugins>

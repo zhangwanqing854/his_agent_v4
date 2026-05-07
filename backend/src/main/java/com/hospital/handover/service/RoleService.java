@@ -2,11 +2,9 @@ package com.hospital.handover.service;
 
 import com.hospital.handover.dto.*;
 import com.hospital.handover.entity.Duty;
-import com.hospital.handover.entity.Permission;
 import com.hospital.handover.entity.Role;
 import com.hospital.handover.entity.RoleDuty;
 import com.hospital.handover.repository.DutyRepository;
-import com.hospital.handover.repository.PermissionRepository;
 import com.hospital.handover.repository.RoleDutyRepository;
 import com.hospital.handover.repository.RoleRepository;
 import org.springframework.stereotype.Service;
@@ -151,7 +149,7 @@ public class RoleService {
         List<DutyDto> result = new ArrayList<>();
         for (RoleDuty rd : roleDuties) {
             Optional<Duty> duty = dutyRepository.findById(rd.getDutyId());
-            duty.ifPresent(d -> result.add(new DutyDto(d.getId(), d.getCode(), d.getName())));
+            duty.ifPresent(d -> result.add(new DutyDto(d.getId(), d.getCode(), d.getName(), d.getDescription())));
         }
         
         return result;
@@ -174,6 +172,20 @@ public class RoleService {
             .collect(Collectors.toList());
         
         dto.setDutyIds(dutyIds);
+        
+        List<DutyDto> duties = new ArrayList<>();
+        for (RoleDuty rd : roleDuties) {
+            Optional<Duty> duty = dutyRepository.findById(rd.getDutyId());
+            duty.ifPresent(d -> {
+                DutyDto dutyDto = new DutyDto();
+                dutyDto.setId(d.getId());
+                dutyDto.setCode(d.getCode());
+                dutyDto.setName(d.getName());
+                dutyDto.setDescription(d.getDescription());
+                duties.add(dutyDto);
+            });
+        }
+        dto.setDuties(duties);
         
         return dto;
     }

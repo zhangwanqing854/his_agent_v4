@@ -4,6 +4,7 @@ public class UserDto {
     
     private Long id;
     private String username;
+    private String usercode;
     private String name;
     private Boolean isSuperAdmin;
     private Long hisStaffId;
@@ -24,6 +25,9 @@ public class UserDto {
     
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+    
+    public String getUsercode() { return usercode; }
+    public void setUsercode(String usercode) { this.usercode = usercode; }
     
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

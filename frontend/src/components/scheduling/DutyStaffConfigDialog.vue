@@ -130,18 +130,34 @@ const availableStaff = computed(() => {
 })
 
 const loadData = async () => {
+  console.log('[DutyStaffConfigDialog] loadData 开始执行')
+  console.log('[DutyStaffConfigDialog] localStorage token:', localStorage.getItem('token'))
+  
   try {
+    console.log('[DutyStaffConfigDialog] 调用 fetchDutyStaff...')
     const dutyRes = await fetchDutyStaff()
+    console.log('[DutyStaffConfigDialog] fetchDutyStaff 返回:', dutyRes)
     if (dutyRes.code === 0) {
       dutyStaffList.value = dutyRes.data
+      console.log('[DutyStaffConfigDialog] dutyStaffList 赋值完成，长度:', dutyStaffList.value.length)
     }
     
+    console.log('[DutyStaffConfigDialog] 调用 fetchSchedulingStaff...')
     const staffRes = await fetchSchedulingStaff()
+    console.log('[DutyStaffConfigDialog] fetchSchedulingStaff 返回:', staffRes)
     if (staffRes.code === 0) {
       allStaffList.value = staffRes.data
+      console.log('[DutyStaffConfigDialog] allStaffList 赋值完成，长度:', allStaffList.value.length)
     }
-  } catch (error) {
-    console.error('加载数据失败:', error)
+    
+    console.log('[DutyStaffConfigDialog] availableStaff 计算结果，长度:', availableStaff.value.length)
+  } catch (error: any) {
+    console.error('[DutyStaffConfigDialog] 加载数据失败:', error)
+    if (error?.message?.includes('未授权') || error?.message?.includes('登录')) {
+      ElMessage.error('登录已过期，请重新登录')
+    } else {
+      ElMessage.error('加载数据失败，请刷新页面重试')
+    }
   }
 }
 

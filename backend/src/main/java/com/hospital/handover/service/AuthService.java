@@ -3,10 +3,14 @@ package com.hospital.handover.service;
 import com.hospital.handover.dto.*;
 import com.hospital.handover.entity.Department;
 import com.hospital.handover.entity.DoctorDepartment;
+import com.hospital.handover.entity.Duty;
 import com.hospital.handover.entity.Role;
+import com.hospital.handover.entity.RoleDuty;
 import com.hospital.handover.entity.User;
 import com.hospital.handover.repository.DepartmentRepository;
 import com.hospital.handover.repository.DoctorDepartmentRepository;
+import com.hospital.handover.repository.DutyRepository;
+import com.hospital.handover.repository.RoleDutyRepository;
 import com.hospital.handover.repository.RoleRepository;
 import com.hospital.handover.repository.UserRepository;
 import com.hospital.handover.util.JwtUtil;
@@ -14,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
@@ -22,18 +27,27 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final DepartmentRepository departmentRepository;
     private final DoctorDepartmentRepository doctorDepartmentRepository;
+    private final DutyRepository dutyRepository;
+    private final RoleDutyRepository roleDutyRepository;
     private final JwtUtil jwtUtil;
+    private final SyncService syncService;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        DepartmentRepository departmentRepository,
                        DoctorDepartmentRepository doctorDepartmentRepository,
-                       JwtUtil jwtUtil) {
+                       DutyRepository dutyRepository,
+                       RoleDutyRepository roleDutyRepository,
+                       JwtUtil jwtUtil,
+                       SyncService syncService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.departmentRepository = departmentRepository;
         this.doctorDepartmentRepository = doctorDepartmentRepository;
+        this.dutyRepository = dutyRepository;
+        this.roleDutyRepository = roleDutyRepository;
         this.jwtUtil = jwtUtil;
+        this.syncService = syncService;
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -55,6 +69,7 @@ public class AuthService {
         String roleCode = role != null ? role.getCode() : "UNKNOWN";
         
         List<DepartmentInfo> departments = getUserDepartments(user.getId());
+        List<DutyDto> duties = getUserDuties(user.getRoleId(), user.getIsSuperAdmin());
         
         Long primaryDeptId = departments.stream()
                 .filter(DepartmentInfo::getIsPrimary)
@@ -72,7 +87,24 @@ public class AuthService {
         userInfo.setName(getUserName(user));
         userInfo.setRole(roleCode.toLowerCase());
         userInfo.setAvatar("");
+        userInfo.setIsSuperAdmin(user.getIsSuperAdmin());
         userInfo.setDepartments(departments);
+        userInfo.setDuties(duties);
+        
+        // 登录成功后触发数据同步（异步执行，不阻塞登录响应）
+        String deptCode = departments.stream()
+                .filter(DepartmentInfo::getIsPrimary)
+                .findFirst()
+                .map(DepartmentInfo::getCode)
+                .orElse(null);
+        
+        if (deptCode != null) {
+            try {
+                syncService.executeBatchSync(deptCode, "LOGIN");
+            } catch (Exception e) {
+                // 同步失败不影响登录
+            }
+        }
         
         return new LoginResponse(token, userInfo);
     }
@@ -88,6 +120,7 @@ public class AuthService {
         String roleCode = role != null ? role.getCode() : "UNKNOWN";
         
         List<DepartmentInfo> departments = getUserDepartments(user.getId());
+        List<DutyDto> duties = getUserDuties(user.getRoleId(), user.getIsSuperAdmin());
         
         UserInfo userInfo = new UserInfo();
         userInfo.setId(user.getId());
@@ -97,7 +130,9 @@ public class AuthService {
         userInfo.setName(getUserName(user));
         userInfo.setRole(roleCode.toLowerCase());
         userInfo.setAvatar("");
+        userInfo.setIsSuperAdmin(user.getIsSuperAdmin());
         userInfo.setDepartments(departments);
+        userInfo.setDuties(duties);
         
         return userInfo;
     }
@@ -154,6 +189,41 @@ public class AuthService {
             }
         }
         
+        // 如果没有主科室，自动设置第一个科室为主科室
+        if (!departments.isEmpty()) {
+            boolean hasPrimary = departments.stream().anyMatch(DepartmentInfo::getIsPrimary);
+            if (!hasPrimary) {
+                departments.get(0).setIsPrimary(true);
+            }
+        }
+        
         return departments;
+    }
+    
+    private List<DutyDto> getUserDuties(Long roleId, Boolean isSuperAdmin) {
+        if (Boolean.TRUE.equals(isSuperAdmin)) {
+            List<Duty> allDuties = dutyRepository.findAll();
+            return allDuties.stream()
+                .map(d -> new DutyDto(d.getId(), d.getCode(), d.getName(), d.getDescription()))
+                .collect(Collectors.toList());
+        }
+        
+        if (roleId == null) {
+            return new ArrayList<>();
+        }
+        
+        List<RoleDuty> roleDuties = roleDutyRepository.findByRoleId(roleId);
+        List<Long> dutyIds = roleDuties.stream()
+            .map(RoleDuty::getDutyId)
+            .collect(Collectors.toList());
+        
+        if (dutyIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<Duty> duties = dutyRepository.findAllById(dutyIds);
+        return duties.stream()
+            .map(d -> new DutyDto(d.getId(), d.getCode(), d.getName(), d.getDescription()))
+            .collect(Collectors.toList());
     }
 }

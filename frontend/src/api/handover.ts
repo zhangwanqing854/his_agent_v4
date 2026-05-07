@@ -58,6 +58,16 @@ export interface DutyStaffDto {
   staffName: string
 }
 
+export interface DutyStaffListItemDto {
+  id: number
+  departmentId: number
+  staffId: number
+  staffCode: string
+  staffName: string
+  title: string
+  displayOrder: number
+}
+
 export function fetchHandoverList(deptId: number): Promise<ApiResponse<HandoverDto[]>> {
   return request.get('/handovers', { params: { deptId } }) as Promise<ApiResponse<HandoverDto[]>>
 }
@@ -80,6 +90,10 @@ export function fetchHandoverStats(deptId: number): Promise<ApiResponse<Handover
 
 export function fetchDutyStaff(deptId: number): Promise<ApiResponse<DutyStaffDto>> {
   return request.get('/handovers/duty-staff', { params: { deptId } }) as Promise<ApiResponse<DutyStaffDto>>
+}
+
+export function fetchDutyStaffList(): Promise<ApiResponse<DutyStaffListItemDto[]>> {
+  return request.get('/scheduling/duty-staff') as Promise<ApiResponse<DutyStaffListItemDto[]>>
 }
 
 export function fetchHandoverPatientsForCreate(deptId: number): Promise<ApiResponse<HandoverPatientDto[]>> {

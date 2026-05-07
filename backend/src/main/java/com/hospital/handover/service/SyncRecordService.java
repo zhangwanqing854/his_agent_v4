@@ -31,7 +31,7 @@ public class SyncRecordService {
     public void saveSyncRecord(Long configId, LocalDateTime startTime, LocalDateTime endTime,
                                int totalCount, int insertCount, int updateCount,
                                int skipCount, int failCount, String errorMessage,
-                               String requestData, long durationMs) {
+                               String requestData, long durationMs, String syncType) {
         try {
             Optional<InterfaceConfig> configOpt = configRepository.findById(configId);
             if (!configOpt.isPresent()) {
@@ -44,7 +44,7 @@ public class SyncRecordService {
             record.setConfigId(configId);
             record.setConfigCode(config.getConfigCode());
             record.setConfigName(config.getConfigName());
-            record.setSyncType("MANUAL");
+            record.setSyncType(syncType != null ? syncType : "MANUAL");
             record.setSyncStartTime(startTime);
             record.setSyncEndTime(endTime);
             record.setActualStartTime(startTime);
@@ -63,5 +63,14 @@ public class SyncRecordService {
         } catch (Exception e) {
             logger.error("Error saving sync record: {}", e.getMessage());
         }
+    }
+    
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveSyncRecord(Long configId, LocalDateTime startTime, LocalDateTime endTime,
+                               int totalCount, int insertCount, int updateCount,
+                               int skipCount, int failCount, String errorMessage,
+                               String requestData, long durationMs) {
+        saveSyncRecord(configId, startTime, endTime, totalCount, insertCount, updateCount,
+                       skipCount, failCount, errorMessage, requestData, durationMs, "MANUAL");
     }
 }

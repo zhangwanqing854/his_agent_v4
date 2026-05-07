@@ -22,21 +22,11 @@ export interface Role {
   duties?: Duty[]
 }
 
-export interface Permission {
-  id: number
-  code: string
-  name: string
-  description: string
-  duties?: Duty[]
-}
-
 export interface Duty {
   id: number
   code: string
   name: string
   description: string
-  permissionId: number
-  permission?: Permission
 }
 
 export interface HisStaff {
@@ -73,4 +63,24 @@ export interface RoleFormData {
   description: string
   isDefault: boolean
   dutyIds: number[]
+}
+
+export interface UserInfo {
+  id: number
+  hisStaffId: number | null
+  username: string
+  usercode: string
+  name: string
+  role: string
+  avatar: string
+  isSuperAdmin: boolean
+  departments: Department[]
+  duties?: Duty[]
+}
+
+export interface Department {
+  id: number
+  code: string
+  name: string
+  isPrimary: boolean
 }

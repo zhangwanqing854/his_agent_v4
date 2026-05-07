@@ -44,29 +44,21 @@
         </div>
         
         <div class="duty-assignment">
-          <div v-for="permission in permissions" :key="permission.id" class="permission-group">
-            <div class="permission-header">
+          <el-checkbox-group v-model="form.dutyIds">
+            <div class="duty-grid">
               <el-checkbox
-                :model-value="isPermissionAllSelected(permission.id)"
-                :indeterminate="isPermissionIndeterminate(permission.id)"
-                @change="(val: boolean) => handlePermissionSelectAll(permission.id, val)"
-              >
-                <span class="permission-name">{{ permission.name }}</span>
-              </el-checkbox>
-              <span class="permission-desc">{{ permission.description }}</span>
-            </div>
-            <div class="duty-list">
-              <el-checkbox
-                v-for="duty in getDutiesByPermission(permission.id)"
+                v-for="duty in duties"
                 :key="duty.id"
-                v-model="form.dutyIds"
                 :label="duty.id"
+                class="duty-checkbox"
               >
-                <span class="duty-name">{{ duty.name }}</span>
-                <span class="duty-desc">{{ duty.description }}</span>
+                <div class="duty-item">
+                  <span class="duty-name">{{ duty.name }}</span>
+                  <span class="duty-code">{{ duty.code }}</span>
+                </div>
               </el-checkbox>
             </div>
-          </div>
+          </el-checkbox-group>
         </div>
       </div>
     </el-form>
@@ -88,12 +80,11 @@ import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { User, Key } from '@element-plus/icons-vue'
 import { createRoleApi, updateRoleApi } from '@/api/user'
-import type { Role, Permission, Duty, RoleFormData } from '@/types/user'
+import type { Role, Duty, RoleFormData } from '@/types/user'
 
 interface Props {
   modelValue: boolean
   role: Role | null
-  permissions: Permission[]
   duties: Duty[]
 }
 
@@ -131,36 +122,6 @@ const rules: FormRules = {
     { required: true, message: '请输入角色编码', trigger: 'blur' },
     { pattern: /^[A-Z_]+$/, message: '角色编码只能包含大写字母和下划线', trigger: 'blur' }
   ]
-}
-
-const getDutiesByPermission = (permissionId: number) => {
-  return props.duties.filter(d => d.permissionId === permissionId)
-}
-
-const isPermissionAllSelected = (permissionId: number) => {
-  const duties = getDutiesByPermission(permissionId)
-  return duties.length > 0 && duties.every(d => form.dutyIds.includes(d.id))
-}
-
-const isPermissionIndeterminate = (permissionId: number) => {
-  const duties = getDutiesByPermission(permissionId)
-  const selectedCount = duties.filter(d => form.dutyIds.includes(d.id)).length
-  return selectedCount > 0 && selectedCount < duties.length
-}
-
-const handlePermissionSelectAll = (permissionId: number, selected: boolean) => {
-  const duties = getDutiesByPermission(permissionId)
-  const dutyIds = duties.map(d => d.id)
-  
-  if (selected) {
-    dutyIds.forEach(id => {
-      if (!form.dutyIds.includes(id)) {
-        form.dutyIds.push(id)
-      }
-    })
-  } else {
-    form.dutyIds = form.dutyIds.filter(id => !dutyIds.includes(id))
-  }
 }
 
 watch(
@@ -274,58 +235,44 @@ const handleSubmit = async () => {
 }
 
 .duty-assignment {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.permission-group {
   background: var(--bg-primary);
   border-radius: var(--radius-sm);
   padding: 12px;
 }
 
-.permission-header {
+.duty-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.duty-checkbox {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-light);
-  margin-bottom: 8px;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
 }
 
-.permission-name {
-  font-weight: 500;
-  color: var(--text-primary);
+.duty-checkbox:hover {
+  background: var(--color-primary-light);
 }
 
-.permission-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.duty-list {
+.duty-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-left: 24px;
-}
-
-.duty-list .el-checkbox {
-  display: flex;
-  align-items: flex-start;
-  height: auto;
+  gap: 2px;
 }
 
 .duty-name {
   font-size: 14px;
   color: var(--text-primary);
+  font-weight: 500;
 }
 
-.duty-desc {
+.duty-code {
   font-size: 12px;
   color: var(--text-secondary);
-  margin-left: 8px;
 }
 
 .dialog-footer {

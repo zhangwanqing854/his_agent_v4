@@ -82,51 +82,9 @@
           </el-table>
         </el-tab-pane>
 
-        <el-tab-pane label="权限管理" name="permissions">
-          <el-table
-            :data="permissionList"
-            style="width: 100%"
-            class="permission-table"
-            :header-cell-style="{ background: '#fafafa', color: '#303133', fontWeight: '600' }"
-          >
-            <el-table-column prop="name" label="权限名称" width="150" />
-            <el-table-column prop="code" label="权限编码" width="150" align="center">
-              <template #default="{ row }">
-                <el-tag type="info" effect="light" size="small">{{ row.code }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="description" label="描述" min-width="200" />
-            <el-table-column label="包含职责" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag effect="light" size="small">{{ row.duties?.length || 0 }} 个</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="100" align="center">
-              <template #default="{ row }">
-                <el-button type="primary" link size="small" @click="handleViewPermissionDuties(row)">
-                  查看职责
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
-
         <el-tab-pane label="职责管理" name="duties">
-          <div class="filter-bar">
-            <div class="filter-left">
-              <el-select v-model="dutyFilter.permissionId" placeholder="按权限筛选" clearable style="width: 180px" filterable>
-                <el-option
-                  v-for="perm in permissionList"
-                  :key="perm.id"
-                  :label="perm.name"
-                  :value="perm.id"
-                />
-              </el-select>
-            </div>
-          </div>
-
           <el-table
-            :data="filteredDutyList"
+            :data="dutyList"
             style="width: 100%"
             class="duty-table"
             :header-cell-style="{ background: '#fafafa', color: '#303133', fontWeight: '600' }"
@@ -135,11 +93,6 @@
             <el-table-column prop="code" label="职责编码" width="160" align="center">
               <template #default="{ row }">
                 <el-tag type="info" effect="light" size="small">{{ row.code }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="所属权限" width="120" align="center">
-              <template #default="{ row }">
-                <el-tag type="warning" effect="light" size="small">{{ row.permission?.name }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="description" label="描述" min-width="200" />
@@ -151,7 +104,6 @@
     <RoleEditDialog
       v-model="roleDialogVisible"
       :role="currentRole"
-      :permissions="permissionList"
       :duties="dutyList"
       @success="handleRoleSuccess"
     />
@@ -170,11 +122,10 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Key, Plus, Search, Edit, Delete, View } from '@element-plus/icons-vue'
 import {
   fetchRoleList,
-  fetchPermissionList,
   fetchDutyList,
   deleteRoleApi
 } from '@/api/user'
-import type { Role, Permission, Duty } from '@/types/user'
+import type { Role, Duty } from '@/types/user'
 import RoleEditDialog from '@/components/settings/RoleEditDialog.vue'
 import RoleDutiesDialog from '@/components/settings/RoleDutiesDialog.vue'
 
@@ -182,15 +133,10 @@ const router = useRouter()
 
 const activeTab = ref('roles')
 const roleList = ref<Role[]>([])
-const permissionList = ref<Permission[]>([])
 const dutyList = ref<Duty[]>([])
 
 const roleFilter = reactive({
   name: ''
-})
-
-const dutyFilter = reactive({
-  permissionId: null as number | null
 })
 
 const roleDialogVisible = ref(false)
@@ -204,21 +150,14 @@ const filteredRoleList = computed(() => {
   )
 })
 
-const filteredDutyList = computed(() => {
-  if (!dutyFilter.permissionId) return dutyList.value
-  return dutyList.value.filter(d => d.permissionId === dutyFilter.permissionId)
-})
-
 const loadData = async () => {
   try {
-    const [roleRes, permRes, dutyRes] = await Promise.all([
+    const [roleRes, dutyRes] = await Promise.all([
       fetchRoleList(),
-      fetchPermissionList(),
       fetchDutyList()
     ])
     
     if (roleRes.code === 0) roleList.value = roleRes.data
-    if (permRes.code === 0) permissionList.value = permRes.data
     if (dutyRes.code === 0) dutyList.value = dutyRes.data
   } catch {
     ElMessage.error('加载数据失败')
@@ -258,11 +197,6 @@ const handleDeleteRole = async (role: Role) => {
       ElMessage.error('删除失败')
     }
   }).catch(() => {})
-}
-
-const handleViewPermissionDuties = (permission: Permission) => {
-  dutyFilter.permissionId = permission.id
-  activeTab.value = 'duties'
 }
 
 const handleRoleSuccess = () => {
@@ -348,7 +282,6 @@ onMounted(() => {
 }
 
 .role-table,
-.permission-table,
 .duty-table {
   border-radius: var(--radius-md);
   overflow: hidden;

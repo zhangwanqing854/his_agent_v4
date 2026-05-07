@@ -136,6 +136,28 @@
           <div v-if="isEdit && isSuperAdmin" class="field-hint">超级管理员不可禁用</div>
         </el-form-item>
       </div>
+
+      <div v-if="currentUserIsSuperAdmin && !isEditingSelf" class="form-section">
+        <div class="section-title">
+          <el-icon><Shield /></el-icon>
+          超级管理员设置
+        </div>
+        <el-form-item label="超级管理员">
+          <el-switch v-model="form.isSuperAdmin" />
+          <span class="switch-hint">超级管理员拥有系统最高权限</span>
+        </el-form-item>
+      </div>
+
+      <div v-if="currentUserIsSuperAdmin && isEditingSelf && isEdit" class="form-section">
+        <div class="section-title">
+          <el-icon><Shield /></el-icon>
+          超级管理员设置
+        </div>
+        <el-form-item label="超级管理员">
+          <el-switch v-model="form.isSuperAdmin" disabled />
+          <div class="field-hint">不能修改自己的超级管理员状态</div>
+        </el-form-item>
+      </div>
     </el-form>
 
     <template #footer>
@@ -153,7 +175,7 @@
 import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { User, Key, Link, Setting } from '@element-plus/icons-vue'
+import { User, Key, Link, Setting, Shield } from '@element-plus/icons-vue'
 import {
   fetchRoleList,
   fetchHisStaffList,
@@ -162,6 +184,7 @@ import {
   checkUsercodeExists
 } from '@/api/user'
 import type { User as UserType, Role, HisStaff } from '@/types/user'
+import { useAuthStore } from '@/stores/auth'
 
 interface Props {
   modelValue: boolean
@@ -176,6 +199,8 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+const authStore = useAuthStore()
+
 const visible = ref(props.modelValue)
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
@@ -185,6 +210,8 @@ const allHisStaff = ref<HisStaff[]>([])
 
 const isEdit = computed(() => !!props.user?.id)
 const isSuperAdmin = computed(() => props.user?.isSuperAdmin)
+const currentUserIsSuperAdmin = computed(() => authStore.isSuperAdmin)
+const isEditingSelf = computed(() => props.user?.id === authStore.userInfo?.id)
 
 const defaultForm = {
   usercode: '',
@@ -192,7 +219,8 @@ const defaultForm = {
   password: '',
   roleId: 2,
   hisStaffId: null as number | null,
-  enabled: true
+  enabled: true,
+  isSuperAdmin: false
 }
 
 const form = reactive({ ...defaultForm })
@@ -284,6 +312,7 @@ watch(
         form.roleId = props.user.roleId
         form.hisStaffId = props.user.hisStaffId
         form.enabled = props.user.enabled
+        form.isSuperAdmin = props.user.isSuperAdmin || false
       } else {
         resetForm()
       }
@@ -318,7 +347,8 @@ const handleSubmit = async () => {
           const updateData: Record<string, unknown> = {
             roleId: form.roleId,
             hisStaffId: form.hisStaffId,
-            enabled: form.enabled
+            enabled: form.enabled,
+            isSuperAdmin: form.isSuperAdmin
           }
           if (form.password) {
             updateData.password = form.password
@@ -395,6 +425,12 @@ const handleSubmit = async () => {
   font-size: 12px;
   color: var(--text-secondary);
   margin-top: 4px;
+}
+
+.switch-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-left: 12px;
 }
 
 .duty-preview,

@@ -8,11 +8,18 @@ export interface ApiResponse<T = any> {
   data: T
 }
 
-function createService(): AxiosInstance {
+interface CustomAxiosInstance extends AxiosInstance {
+  get<T = any>(url: string, config?: any): Promise<ApiResponse<T>>
+  post<T = any>(url: string, data?: any, config?: any): Promise<ApiResponse<T>>
+  put<T = any>(url: string, data?: any, config?: any): Promise<ApiResponse<T>>
+  delete<T = any>(url: string, config?: any): Promise<ApiResponse<T>>
+}
+
+function createService(): CustomAxiosInstance {
   const service = axios.create({
     baseURL: '/api',
     timeout: 30000
-  })
+  }) as CustomAxiosInstance
 
   service.interceptors.request.use(
     (config) => {
@@ -20,6 +27,12 @@ function createService(): AxiosInstance {
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       }
+      
+      const currentDepartmentId = localStorage.getItem('currentDepartmentId')
+      if (currentDepartmentId) {
+        config.headers['X-Current-Department-Id'] = currentDepartmentId
+      }
+      
       return config
     },
     (error) => {
@@ -51,7 +64,7 @@ function createService(): AxiosInstance {
         return Promise.reject(new Error(res.message || '请求失败'))
       }
       
-      return Promise.resolve(res)
+      return Promise.resolve(response.data as ApiResponse)
     },
     (error) => {
       ElMessage.error(error.message || '网络错误')

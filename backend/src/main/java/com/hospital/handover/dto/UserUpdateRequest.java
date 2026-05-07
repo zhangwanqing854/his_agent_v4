@@ -7,6 +7,7 @@ public class UserUpdateRequest {
     private Long roleId;
     private Long hisStaffId;
     private Boolean enabled;
+    private Boolean isSuperAdmin;
     
     public UserUpdateRequest() {}
     
@@ -24,4 +25,7 @@ public class UserUpdateRequest {
     
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
+    
+    public Boolean getIsSuperAdmin() { return isSuperAdmin; }
+    public void setIsSuperAdmin(Boolean isSuperAdmin) { this.isSuperAdmin = isSuperAdmin; }
 }

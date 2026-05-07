@@ -28,6 +28,17 @@
         {{ authStore.currentDepartmentName }}
       </div>
       
+      <el-button
+        v-if="!isCurrentPrimary"
+        type="primary"
+        size="small"
+        plain
+        @click="handleSetPrimary"
+        :loading="settingPrimary"
+      >
+        设为主科室
+      </el-button>
+      
       <div class="user-info">
         <el-icon :size="20"><User /></el-icon>
         <span>{{ authStore.userName }}</span>
@@ -53,22 +64,39 @@ import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { User, Setting } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import SyncProgressDialog from '@/components/common/SyncProgressDialog.vue'
+import { setPrimaryDepartment } from '@/api/doctorDepartmentManagement'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const showSyncDialog = ref(false)
 const syncTimeoutId = ref<number | null>(null)
+const settingPrimary = ref(false)
 
 const currentDeptId = computed({
   get: () => authStore.currentDepartmentId,
   set: (val) => authStore.switchDepartment(val as number)
 })
 
+const isCurrentPrimary = computed(() => {
+  const currentDept = authStore.userDepartments.find(d => d.id === authStore.currentDepartmentId)
+  return currentDept?.isPrimary || false
+})
+
 const handleDepartmentChange = (deptId: number) => {
+  console.log('[TopNav] handleDepartmentChange called, deptId:', deptId)
+  console.log('[TopNav] before switchDepartment, currentDeptId:', authStore.currentDepartmentId)
+  
   authStore.switchDepartment(deptId)
+  
+  console.log('[TopNav] after switchDepartment, currentDeptId:', authStore.currentDepartmentId)
+  console.log('[TopNav] setting showSyncDialog = true')
+  
   showSyncDialog.value = true
+  
+  console.log('[TopNav] showSyncDialog.value:', showSyncDialog.value)
+  
   syncTimeoutId.value = window.setTimeout(() => {
     if (showSyncDialog.value) {
       console.log('[TopNav] sync timeout, forcing close')
@@ -99,6 +127,43 @@ const handleSyncComplete = (success: boolean) => {
 const handleLogout = async () => {
   await authStore.logout()
   router.push('/login')
+}
+
+const handleSetPrimary = async () => {
+  const deptName = authStore.currentDepartmentName
+  const doctorId = authStore.userInfo?.id
+  const departmentId = authStore.currentDepartmentId
+  
+  if (!doctorId || !departmentId) {
+    ElMessage.error('无法获取用户或科室信息')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定将"${deptName}"设为您的主科室吗？`,
+      '设置主科室',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'info'
+      }
+    )
+    
+    settingPrimary.value = true
+    const res = await setPrimaryDepartment(doctorId, departmentId)
+    
+    if (res.code === 0) {
+      ElMessage.success('已设置为主科室')
+      await authStore.fetchUserInfo()
+    } else {
+      ElMessage.error(res.message || '设置失败')
+    }
+  } catch {
+    // 用户取消
+  } finally {
+    settingPrimary.value = false
+  }
 }
 </script>
 

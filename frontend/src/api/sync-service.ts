@@ -1,6 +1,35 @@
 import type { InterfaceConfig, SyncResult } from '@/types/interface-config'
+import request from './request'
 
 const SOAP_PROXY_PATH = '/api/soap-proxy'
+
+export interface SyncDeptPatientOverviewResult {
+  success: boolean
+  message: string
+  count?: number
+}
+
+export async function syncDeptPatientOverview(deptCode: string): Promise<SyncDeptPatientOverviewResult> {
+  try {
+    const response = await request.post(`/sync/dept-patient-info?deptCode=${encodeURIComponent(deptCode)}`)
+    if (response.code === 0 && response.data) {
+      return {
+        success: true,
+        message: response.message || '同步成功',
+        count: response.data.count || 0
+      }
+    }
+    return {
+      success: false,
+      message: response.message || '同步失败'
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || '同步失败'
+    }
+  }
+}
 
 export async function executeSync(config: InterfaceConfig): Promise<SyncResult> {
   const startTime = Date.now()

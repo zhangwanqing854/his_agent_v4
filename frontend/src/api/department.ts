@@ -37,3 +37,24 @@ export function updateDepartment(id: number, data: DepartmentUpdateRequest) {
 export function deleteDepartment(id: number) {
   return request.delete<void>(`/departments/${id}`)
 }
+
+export interface ImportError {
+  lineNumber: number
+  message: string
+}
+
+export interface ImportResult {
+  totalCount: number
+  insertCount: number
+  updateCount: number
+  skipCount: number
+  failCount: number
+  errors: ImportError[]
+}
+
+export function importDepartments(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  
+  return request.post<ImportResult>('/department/import', formData)
+}

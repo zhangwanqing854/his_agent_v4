@@ -5,8 +5,7 @@ public class DutyDto {
     private Long id;
     private String code;
     private String name;
-    private Long permissionId;
-    private String permissionName;
+    private String description;
     
     public DutyDto() {}
     
@@ -14,6 +13,13 @@ public class DutyDto {
         this.id = id;
         this.code = code;
         this.name = name;
+    }
+    
+    public DutyDto(Long id, String code, String name, String description) {
+        this.id = id;
+        this.code = code;
+        this.name = name;
+        this.description = description;
     }
     
     public Long getId() { return id; }
@@ -25,9 +31,6 @@ public class DutyDto {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     
-    public Long getPermissionId() { return permissionId; }
-    public void setPermissionId(Long permissionId) { this.permissionId = permissionId; }
-    
-    public String getPermissionName() { return permissionName; }
-    public void setPermissionName(String permissionName) { this.permissionName = permissionName; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 }

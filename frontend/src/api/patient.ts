@@ -1,5 +1,33 @@
 import request from './request'
 
+export interface ImportError {
+  lineNumber: number
+  message: string
+}
+
+export interface ImportResult {
+  totalCount: number
+  insertCount: number
+  updateCount: number
+  skipCount: number
+  failCount: number
+  errors: ImportError[]
+}
+
+export function importPatient(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  
+  return request.post<ImportResult>('/patient-import', formData)
+}
+
+export function importVisit(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  
+  return request.post<ImportResult>('/visit-import', formData)
+}
+
 export interface PatientDto {
   id: number
   patientNo: string

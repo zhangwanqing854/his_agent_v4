@@ -10,6 +10,7 @@ public class RoleDto {
     private Boolean isDefault;
     private String description;
     private List<Long> dutyIds;
+    private List<DutyDto> duties;
     
     public RoleDto() {}
     
@@ -30,4 +31,7 @@ public class RoleDto {
     
     public List<Long> getDutyIds() { return dutyIds; }
     public void setDutyIds(List<Long> dutyIds) { this.dutyIds = dutyIds; }
+    
+    public List<DutyDto> getDuties() { return duties; }
+    public void setDuties(List<DutyDto> duties) { this.duties = duties; }
 }

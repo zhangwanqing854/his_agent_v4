@@ -17,4 +17,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     @Query("SELECT u FROM User u WHERE u.hisStaffId IS NOT NULL")
     List<User> findAllWithHisStaffId();
+    
+    long countByIsSuperAdmin(boolean isSuperAdmin);
 }

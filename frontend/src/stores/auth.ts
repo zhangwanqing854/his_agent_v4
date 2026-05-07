@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { loginApi, logoutApi, getCurrentUserApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
+import type { Duty } from '@/types/user'
 
 export interface Department {
   id: number
@@ -17,7 +18,9 @@ export interface UserInfo {
   name: string
   role: string
   avatar: string
+  isSuperAdmin: boolean
   departments: Department[]
+  duties?: Duty[]
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -42,11 +45,17 @@ export const useAuthStore = defineStore('auth', {
       const dept = state.userInfo.departments.find((d: Department) => d.id === state.currentDepartmentId)
       return dept?.name || ''
     },
+    isSuperAdmin: (state) => state.userInfo?.isSuperAdmin || false,
     canSwitchDepartment: (state) => (state.userInfo?.departments?.length ?? 0) > 1,
-    userDepartments: (state) => state.userInfo?.departments || []
+    userDepartments: (state) => state.userInfo?.departments || [],
+    userDuties: (state) => state.userInfo?.duties || []
   },
 
   actions: {
+    hasDuty(dutyCode: string): boolean {
+      if (this.userInfo?.isSuperAdmin) return true
+      return this.userInfo?.duties?.some(d => d.code === dutyCode) || false
+    },
 async login(usercode: string, password: string): Promise<boolean> {
   try {
     console.log('[Auth] login called with:', { usercode })
@@ -119,23 +128,27 @@ async fetchUserInfo() {
 },
 
     switchDepartment(departmentId: number) {
+      console.log('[Auth] switchDepartment called, departmentId:', departmentId, 'current:', this.currentDepartmentId)
+      
       if (!this.userInfo?.departments?.some((d: Department) => d.id === departmentId)) {
-        console.warn('用户不属于该科室，无法切换')
+        console.warn('[Auth] 用户不属于该科室，无法切换')
         return
       }
       
       const dept = this.userInfo?.departments?.find((d: Department) => d.id === departmentId)
       if (!dept) {
-        console.warn('找不到科室信息')
+        console.warn('[Auth] 找不到科室信息')
         return
       }
+      
+      console.log('[Auth] switching to department:', dept.name, 'code:', dept.code)
       
       this.currentDepartmentId = departmentId
       this.currentDepartmentCode = dept.code
       localStorage.setItem('currentDepartmentId', String(departmentId))
       localStorage.setItem('currentDepartmentCode', dept.code)
       
-      console.log('[Auth] switched to department:', dept.name, 'code:', dept.code)
+      console.log('[Auth] switchDepartment completed')
     },
 
     async logout() {

@@ -193,19 +193,7 @@ public class SchedulingService {
             return new ArrayList<>();
         }
         
-        List<DepartmentDutyStaff> dutyStaffList = dutyStaffRepository.findByDepartmentIdOrderByDisplayOrderAsc(departmentId);
-        
-        if (!dutyStaffList.isEmpty()) {
-            List<Long> hisStaffIds = dutyStaffList.stream()
-                .map(DepartmentDutyStaff::getStaffId)
-                .collect(Collectors.toList());
-            
-            List<HisStaff> staffList = hisStaffRepository.findAllById(hisStaffIds);
-            return staffList.stream()
-                .map(this::toHisStaffDto)
-                .collect(Collectors.toList());
-        }
-        
+        // 返回科室全部工作人员作为可选人员池
         List<DoctorDepartment> doctorDepts = doctorDepartmentRepository.findByDepartmentId(departmentId);
         List<Long> userIds = doctorDepts.stream()
             .map(DoctorDepartment::getDoctorId)
@@ -216,16 +204,16 @@ public class SchedulingService {
         }
         
         List<User> users = userRepository.findAllById(userIds);
-        List<Long> fallbackStaffIds = users.stream()
+        List<Long> hisStaffIds = users.stream()
             .map(User::getHisStaffId)
             .filter(id -> id != null)
             .collect(Collectors.toList());
         
-        if (fallbackStaffIds.isEmpty()) {
+        if (hisStaffIds.isEmpty()) {
             return new ArrayList<>();
         }
         
-        List<HisStaff> staffList = hisStaffRepository.findAllById(fallbackStaffIds);
+        List<HisStaff> staffList = hisStaffRepository.findAllById(hisStaffIds);
         return staffList.stream()
             .map(this::toHisStaffDto)
             .collect(Collectors.toList());

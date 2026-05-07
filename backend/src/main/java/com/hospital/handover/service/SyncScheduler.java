@@ -38,7 +38,7 @@ public class SyncScheduler {
                 logger.info("[{}/{}] 开始同步: {} ({})", 
                     config.getSyncOrder(), configs.size(), config.getConfigName(), config.getConfigCode());
                 
-                syncService.executeSync(config.getId(), null);
+                syncService.executeSync(config.getId(), null, "SCHEDULED");
                 
                 logger.info("[{}/{}] 同步完成: {}", 
                     config.getSyncOrder(), configs.size(), config.getConfigName());

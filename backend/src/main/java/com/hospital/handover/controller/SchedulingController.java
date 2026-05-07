@@ -23,9 +23,10 @@ public class SchedulingController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<SchedulingListItemDto>>> getSchedulingList(
             @RequestParam(required = false) String yearMonth,
-            @RequestHeader("Authorization") String authorization) {
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "X-Current-Department-Id", required = false) Long headerDeptId) {
         
-        Long departmentId = getCurrentDepartmentId(authorization);
+        Long departmentId = getCurrentDepartmentId(authorization, headerDeptId);
         List<SchedulingListItemDto> list = schedulingService.getSchedulingList(departmentId, yearMonth);
         return ResponseEntity.ok(ApiResponse.success(list));
     }
@@ -42,9 +43,10 @@ public class SchedulingController {
     @PostMapping
     public ResponseEntity<ApiResponse<SchedulingListItemDto>> createScheduling(
             @RequestBody CreateSchedulingRequest request,
-            @RequestHeader("Authorization") String authorization) {
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "X-Current-Department-Id", required = false) Long headerDeptId) {
         try {
-            Long departmentId = getCurrentDepartmentId(authorization);
+            Long departmentId = getCurrentDepartmentId(authorization, headerDeptId);
             if (departmentId == null) {
                 return ResponseEntity.ok(ApiResponse.error("当前科室为空，请先选择科室"));
             }
@@ -93,16 +95,18 @@ public class SchedulingController {
 
     @GetMapping("/staff")
     public ResponseEntity<ApiResponse<List<HisStaffDto>>> getSchedulableStaff(
-            @RequestHeader("Authorization") String authorization) {
-        Long departmentId = getCurrentDepartmentId(authorization);
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "X-Current-Department-Id", required = false) Long headerDeptId) {
+        Long departmentId = getCurrentDepartmentId(authorization, headerDeptId);
         List<HisStaffDto> staff = schedulingService.getSchedulableStaff(departmentId);
         return ResponseEntity.ok(ApiResponse.success(staff));
     }
 
     @GetMapping("/config")
     public ResponseEntity<ApiResponse<SchedulingConfigDto>> getConfig(
-            @RequestHeader("Authorization") String authorization) {
-        Long departmentId = getCurrentDepartmentId(authorization);
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "X-Current-Department-Id", required = false) Long headerDeptId) {
+        Long departmentId = getCurrentDepartmentId(authorization, headerDeptId);
         SchedulingConfigDto config = schedulingService.getConfig(departmentId);
         return ResponseEntity.ok(ApiResponse.success(config));
     }
@@ -110,9 +114,10 @@ public class SchedulingController {
     @PutMapping("/config")
     public ResponseEntity<ApiResponse<SchedulingConfigDto>> updateConfig(
             @RequestBody UpdateSchedulingConfigRequest request,
-            @RequestHeader("Authorization") String authorization) {
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "X-Current-Department-Id", required = false) Long headerDeptId) {
         try {
-            Long departmentId = getCurrentDepartmentId(authorization);
+            Long departmentId = getCurrentDepartmentId(authorization, headerDeptId);
             SchedulingConfigDto config = schedulingService.updateConfig(departmentId, request);
             return ResponseEntity.ok(ApiResponse.success("更新成功", config));
         } catch (RuntimeException e) {
@@ -124,9 +129,10 @@ public class SchedulingController {
     public ResponseEntity<ApiResponse<List<SchedulingDetailDto>>> autoGenerate(
             @PathVariable Long id,
             @RequestBody AutoGenerateRequest request,
-            @RequestHeader("Authorization") String authorization) {
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "X-Current-Department-Id", required = false) Long headerDeptId) {
         try {
-            Long departmentId = getCurrentDepartmentId(authorization);
+            Long departmentId = getCurrentDepartmentId(authorization, headerDeptId);
             List<SchedulingDetailDto> details = schedulingService.autoGenerate(id, departmentId, request);
             return ResponseEntity.ok(ApiResponse.success("生成成功", details));
         } catch (RuntimeException e) {
@@ -139,7 +145,10 @@ public class SchedulingController {
         return jwtUtil.getUserIdFromToken(token);
     }
 
-    private Long getCurrentDepartmentId(String authorization) {
+    private Long getCurrentDepartmentId(String authorization, Long headerDeptId) {
+        if (headerDeptId != null) {
+            return headerDeptId;
+        }
         String token = authorization.replace("Bearer ", "");
         return jwtUtil.getDepartmentIdFromToken(token);
     }

@@ -69,9 +69,7 @@ public class DutyStaffService {
             }
         }
         
-        return addedList.stream()
-            .map(this::toDto)
-            .collect(Collectors.toList());
+        return getDutyStaffList(departmentId);
     }
 
     @Transactional

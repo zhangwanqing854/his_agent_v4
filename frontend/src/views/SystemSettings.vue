@@ -399,6 +399,230 @@
             </div>
           </div>
         </el-tab-pane>
+
+        <!-- 科室人员管理 Tab -->
+        <el-tab-pane label="科室人员管理" name="doctor-department">
+          <div class="doctor-dept-section">
+            <div class="filter-bar">
+              <div class="filter-left">
+                <el-input v-model="doctorDeptSearch" placeholder="姓名/工号/科室搜索" clearable style="width: 240px" @input="handleDoctorDeptSearch">
+                  <template #prefix>
+                    <el-icon><Search /></el-icon>
+                  </template>
+                </el-input>
+              </div>
+              <div class="filter-right">
+                <el-button type="primary" @click="handleAddDoctorDept">
+                  <el-icon><Plus /></el-icon>
+                  新增关系
+                </el-button>
+              </div>
+            </div>
+
+            <el-table
+              :data="doctorDeptList"
+              style="width: 100%"
+              class="doctor-dept-table"
+              :header-cell-style="{ background: '#fafafa', color: '#303133', fontWeight: '600' }"
+              v-loading="doctorDeptLoading"
+            >
+              <el-table-column prop="doctorUsercode" label="工号" width="120" />
+              <el-table-column prop="doctorName" label="医护人员姓名" width="140">
+                <template #default="{ row }">
+                  <span class="name-text">{{ row.doctorName }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="departmentCode" label="科室编码" width="120" />
+              <el-table-column prop="departmentName" label="科室名称" min-width="140" />
+              <el-table-column prop="isPrimary" label="是否主科室" width="100" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="row.isPrimary ? 'success' : 'info'" effect="light" size="small">
+                    {{ row.isPrimary ? '主科室' : '普通' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="createdAt" label="创建时间" width="170" align="center">
+                <template #default="{ row }">
+                  <span class="time-text">{{ formatDoctorDeptTime(row.createdAt) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="180" align="center" fixed="right">
+                <template #default="{ row }">
+                  <el-button type="primary" link size="small" @click="handleEditDoctorDept(row)">
+                    <el-icon><Edit /></el-icon>
+                    编辑
+                  </el-button>
+                  <el-button type="danger" link size="small" @click="handleDeleteDoctorDept(row)">
+                    <el-icon><Delete /></el-icon>
+                    删除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="pagination-wrapper">
+              <el-pagination
+                v-model:current-page="doctorDeptPagination.page"
+                v-model:page-size="doctorDeptPagination.pageSize"
+                :page-sizes="doctorDeptPagination.pageSizes"
+                :total="doctorDeptPagination.total"
+                layout="total, sizes, prev, pager, next, jumper"
+                @current-change="handleDoctorDeptPageChange"
+                @size-change="handleDoctorDeptSizeChange"
+              />
+            </div>
+          </div>
+        </el-tab-pane>
+
+        <!-- 数据导入 Tab -->
+        <el-tab-pane label="数据导入" name="import">
+          <div class="import-section">
+            <div class="config-card">
+              <div class="card-header">
+                <el-icon class="header-icon"><UploadFilled /></el-icon>
+                <span class="header-title">科室信息导入</span>
+              </div>
+              <div class="card-content">
+                <div class="config-row">
+                  <div class="config-item">
+                    <label>导入方式</label>
+                    <el-button type="primary" @click="departmentImportDialogVisible = true">
+                      <el-icon><UploadFilled /></el-icon>
+                      导入科室信息
+                    </el-button>
+                  </div>
+                  <div class="config-item">
+                    <label>CSV模板</label>
+                    <el-button link type="primary" @click="downloadTemplate">
+                      <el-icon><Download /></el-icon>
+                      下载模板
+                    </el-button>
+                  </div>
+                </div>
+                <div class="config-hint">
+                  <el-icon><InfoFilled /></el-icon>
+                  <span>上传 CSV 文件批量导入科室信息，支持新增和更新。根据科室编码判断重复数据。</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="config-card">
+              <div class="card-header">
+                <el-icon class="header-icon"><UploadFilled /></el-icon>
+                <span class="header-title">人员信息导入</span>
+              </div>
+              <div class="card-content">
+                <div class="config-row">
+                  <div class="config-item">
+                    <label>导入方式</label>
+                    <el-button type="primary" @click="staffImportDialogVisible = true">
+                      <el-icon><UploadFilled /></el-icon>
+                      导入人员信息
+                    </el-button>
+                  </div>
+                  <div class="config-item">
+                    <label>CSV模板</label>
+                    <el-button link type="primary" @click="downloadStaffTemplate">
+                      <el-icon><Download /></el-icon>
+                      下载模板
+                    </el-button>
+                  </div>
+                </div>
+                <div class="config-hint">
+                  <el-icon><InfoFilled /></el-icon>
+                  <span>上传 CSV 文件批量导入人员信息，支持新增和更新。根据人员编码(CODE_PSN)判断重复数据。</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="config-card">
+              <div class="card-header">
+                <el-icon class="header-icon"><UploadFilled /></el-icon>
+                <span class="header-title">科室人员关系导入</span>
+              </div>
+              <div class="card-content">
+                <div class="config-row">
+                  <div class="config-item">
+                    <label>导入方式</label>
+                    <el-button type="primary" @click="doctorDeptImportDialogVisible = true">
+                      <el-icon><UploadFilled /></el-icon>
+                      导入科室人员关系
+                    </el-button>
+                  </div>
+                  <div class="config-item">
+                    <label>CSV模板</label>
+                    <el-button link type="primary" @click="downloadDoctorDeptTemplate">
+                      <el-icon><Download /></el-icon>
+                      下载模板
+                    </el-button>
+                  </div>
+                </div>
+                <div class="config-hint">
+                  <el-icon><InfoFilled /></el-icon>
+                  <span>上传 CSV 文件批量导入科室人员关系，支持新增。根据医生ID和科室ID组合判断重复数据。</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="config-card">
+              <div class="card-header">
+                <el-icon class="header-icon"><UploadFilled /></el-icon>
+                <span class="header-title">患者信息导入</span>
+              </div>
+              <div class="card-content">
+                <div class="config-row">
+                  <div class="config-item">
+                    <label>导入方式</label>
+                    <el-button type="primary" @click="patientImportDialogVisible = true">
+                      <el-icon><UploadFilled /></el-icon>
+                      导入患者信息
+                    </el-button>
+                  </div>
+                  <div class="config-item">
+                    <label>CSV模板</label>
+                    <el-button link type="primary" @click="downloadPatientTemplate">
+                      <el-icon><Download /></el-icon>
+                      下载模板
+                    </el-button>
+                  </div>
+                </div>
+                <div class="config-hint">
+                  <el-icon><InfoFilled /></el-icon>
+                  <span>上传 CSV 文件批量导入患者信息，支持新增和更新。根据患者编码(CODE)判断重复数据。</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="config-card">
+              <div class="card-header">
+                <el-icon class="header-icon"><UploadFilled /></el-icon>
+                <span class="header-title">就诊信息导入</span>
+              </div>
+              <div class="card-content">
+                <div class="config-row">
+                  <div class="config-item">
+                    <label>导入方式</label>
+                    <el-button type="primary" @click="visitImportDialogVisible = true">
+                      <el-icon><UploadFilled /></el-icon>
+                      导入就诊信息
+                    </el-button>
+                  </div>
+                  <div class="config-item">
+                    <label>CSV模板</label>
+                    <el-button link type="primary" @click="downloadVisitTemplate">
+                      <el-icon><Download /></el-icon>
+                      下载模板
+                    </el-button>
+                  </div>
+                </div>
+                <div class="config-hint">
+                  <el-icon><InfoFilled /></el-icon>
+                  <span>上传 CSV 文件批量导入就诊信息，支持新增和更新。根据就诊编码(CODE_ENT)判断重复数据。</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </div>
 
@@ -411,6 +635,87 @@
 
     <!-- 调用日志详情弹窗 -->
     <CallLogDialog v-model="logDialogVisible" :log="currentLog" />
+
+    <!-- 科室信息导入弹窗 -->
+    <DepartmentImportDialog
+      v-model="departmentImportDialogVisible"
+      @success="handleDepartmentImportSuccess"
+    />
+
+    <!-- 人员信息导入弹窗 -->
+    <StaffImportDialog
+      v-model="staffImportDialogVisible"
+      @success="handleStaffImportSuccess"
+    />
+
+    <!-- 科室人员关系导入弹窗 -->
+    <DoctorDepartmentImportDialog
+      v-model="doctorDeptImportDialogVisible"
+      @success="handleDoctorDeptImportSuccess"
+    />
+
+    <!-- 患者信息导入弹窗 -->
+    <PatientImportDialog
+      v-model="patientImportDialogVisible"
+      @success="handlePatientImportSuccess"
+    />
+
+    <!-- 就诊信息导入弹窗 -->
+    <VisitImportDialog
+      v-model="visitImportDialogVisible"
+      @success="handleVisitImportSuccess"
+    />
+
+    <!-- 科室人员关系编辑弹窗 -->
+    <el-dialog
+      v-model="doctorDeptDialogVisible"
+      :title="editingDoctorDept ? '编辑科室人员关系' : '新增科室人员关系'"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="doctorDeptFormData" label-width="100px">
+        <el-form-item label="医护人员" required>
+          <el-select
+            v-model="doctorDeptFormData.doctorId"
+            placeholder="请选择医护人员"
+            style="width: 100%"
+            filterable
+            :disabled="!!editingDoctorDept"
+          >
+            <el-option
+              v-for="staff in allStaffList"
+              :key="staff.id"
+              :label="`${staff.name} (${staff.staffCode})`"
+              :value="staff.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="科室" required>
+          <el-select
+            v-model="doctorDeptFormData.departmentId"
+            placeholder="请选择科室"
+            style="width: 100%"
+            filterable
+            :disabled="!!editingDoctorDept"
+          >
+            <el-option
+              v-for="dept in configList.filter(c => c.dataType === 'DEPARTMENT')"
+              :key="dept.id"
+              :label="dept.configName"
+              :value="dept.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="是否主科室">
+          <el-switch v-model="doctorDeptFormData.isPrimary" />
+          <span class="switch-hint">同一医护人员只能有一个主科室</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="doctorDeptDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveDoctorDept" :loading="doctorDeptSaving">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -433,10 +738,26 @@ import {
   Bell,
   Check,
   Message,
-  Document
+  Document,
+  UploadFilled,
+  Download,
+  Search
 } from '@element-plus/icons-vue'
 import InterfaceConfigDialog from '@/components/settings/InterfaceConfigDialog.vue'
 import CallLogDialog from '@/components/settings/CallLogDialog.vue'
+import DepartmentImportDialog from '@/components/settings/DepartmentImportDialog.vue'
+import StaffImportDialog from '@/components/settings/StaffImportDialog.vue'
+import DoctorDepartmentImportDialog from '@/components/settings/DoctorDepartmentImportDialog.vue'
+import PatientImportDialog from '@/components/settings/PatientImportDialog.vue'
+import VisitImportDialog from '@/components/settings/VisitImportDialog.vue'
+import {
+  fetchDoctorDepartmentList,
+  createDoctorDepartment,
+  updateDoctorDepartment,
+  deleteDoctorDepartment,
+  type DoctorDepartmentManagementDto
+} from '@/api/doctorDepartmentManagement'
+import { fetchHisStaffList, type HisStaffDto } from '@/api/hisStaff'
 import type { InterfaceConfig } from '@/types/interface-config'
 import { getInterfaceConfigList, deleteInterfaceConfig, updateInterfaceConfig, testInterfaceConnection } from '@/api/interface-config'
 import { getSmsConfig, updateSmsConfig } from '@/api/smsConfig'
@@ -473,8 +794,34 @@ const logPagination = reactive({
 // 弹窗状态
 const configDialogVisible = ref(false)
 const logDialogVisible = ref(false)
+const departmentImportDialogVisible = ref(false)
+const staffImportDialogVisible = ref(false)
+const doctorDeptImportDialogVisible = ref(false)
+const patientImportDialogVisible = ref(false)
+const visitImportDialogVisible = ref(false)
 const currentConfig = ref<InterfaceConfig | null>(null)
 const currentLog = ref<CallLog | null>(null)
+
+const doctorDeptSearch = ref('')
+const doctorDeptLoading = ref(false)
+const doctorDeptSaving = ref(false)
+const doctorDeptDialogVisible = ref(false)
+const editingDoctorDept = ref<DoctorDepartmentManagementDto | null>(null)
+const doctorDeptList = ref<DoctorDepartmentManagementDto[]>([])
+const allStaffList = ref<HisStaffDto[]>([])
+
+const doctorDeptFormData = reactive({
+  doctorId: null as number | null,
+  departmentId: null as number | null,
+  isPrimary: false
+})
+
+const doctorDeptPagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 0,
+  pageSizes: [10, 20, 50, 100]
+})
 
 // 系统配置
 const systemConfig = reactive({
@@ -593,6 +940,8 @@ onMounted(() => {
   loadConfigList()
   loadSmsConfig()
   loadReportConfig()
+  loadDoctorDeptList()
+  loadAllStaffList()
 })
 
 // Mock 调用日志数据
@@ -953,6 +1302,198 @@ const handleResetConfig = () => {
   reportConfig.testReportUrl = 'http://10.2.48.64:8001/cdr/login/loginiihPortalIntegrated.html?viewId=V002&patientId={{:patient_no}}&domainId=02&styleId=01&display=0&userId={{:userId}}&visitTimes=&XExternalUrlFlag=1&systemId=SIIH&bsiihtype=0&download=1&visitTimes='
   ElMessage.success('已恢复默认配置')
 }
+
+const downloadTemplate = () => {
+  const link = document.createElement('a')
+  link.href = '/docs/data/科室信息.csv'
+  link.download = '科室信息模板.csv'
+  link.click()
+}
+
+const downloadStaffTemplate = () => {
+  const link = document.createElement('a')
+  link.href = '/docs/data/人员信息.csv'
+  link.download = '人员信息模板.csv'
+  link.click()
+}
+
+const downloadDoctorDeptTemplate = () => {
+  const link = document.createElement('a')
+  link.href = '/docs/data/科室人员信息.csv'
+  link.download = '科室人员信息模板.csv'
+  link.click()
+}
+
+const downloadPatientTemplate = () => {
+  const link = document.createElement('a')
+  link.href = '/docs/data/患者信息.csv'
+  link.download = '患者信息模板.csv'
+  link.click()
+}
+
+const downloadVisitTemplate = () => {
+  const link = document.createElement('a')
+  link.href = '/docs/data/就诊信息.csv'
+  link.download = '就诊信息模板.csv'
+  link.click()
+}
+
+const handleDepartmentImportSuccess = () => {
+  ElMessage.success('科室信息导入成功')
+}
+
+const handleStaffImportSuccess = () => {
+  ElMessage.success('人员信息导入成功')
+}
+
+const handleDoctorDeptImportSuccess = () => {
+  ElMessage.success('科室人员关系导入成功')
+}
+
+const handlePatientImportSuccess = () => {
+  ElMessage.success('患者信息导入成功')
+}
+
+const handleVisitImportSuccess = () => {
+  ElMessage.success('就诊信息导入成功')
+}
+
+const formatDoctorDeptTime = (time: string): string => {
+  if (!time) return '-'
+  const date = new Date(time)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const handleDoctorDeptSearch = () => {
+  doctorDeptPagination.page = 1
+  loadDoctorDeptList()
+}
+
+const handleDoctorDeptPageChange = (page: number) => {
+  doctorDeptPagination.page = page
+  loadDoctorDeptList()
+}
+
+const handleDoctorDeptSizeChange = (size: number) => {
+  doctorDeptPagination.pageSize = size
+  doctorDeptPagination.page = 1
+  loadDoctorDeptList()
+}
+
+const loadDoctorDeptList = async () => {
+  doctorDeptLoading.value = true
+  try {
+    const res = await fetchDoctorDepartmentList(
+      doctorDeptPagination.page,
+      doctorDeptPagination.pageSize,
+      doctorDeptSearch.value
+    )
+    if (res.code === 0) {
+      doctorDeptList.value = res.data.list
+      doctorDeptPagination.total = res.data.total
+    } else {
+      ElMessage.error(res.message || '加载列表失败')
+    }
+  } catch {
+    ElMessage.error('加载列表失败')
+  } finally {
+    doctorDeptLoading.value = false
+  }
+}
+
+const loadAllStaffList = async () => {
+  try {
+    const res = await fetchHisStaffList()
+    if (res.code === 0) {
+      allStaffList.value = res.data
+    }
+  } catch {
+    console.error('加载人员列表失败')
+  }
+}
+
+const handleAddDoctorDept = () => {
+  editingDoctorDept.value = null
+  doctorDeptFormData.doctorId = null
+  doctorDeptFormData.departmentId = null
+  doctorDeptFormData.isPrimary = false
+  doctorDeptDialogVisible.value = true
+}
+
+const handleEditDoctorDept = (item: DoctorDepartmentManagementDto) => {
+  editingDoctorDept.value = item
+  doctorDeptFormData.doctorId = item.doctorId
+  doctorDeptFormData.departmentId = item.departmentId
+  doctorDeptFormData.isPrimary = item.isPrimary
+  doctorDeptDialogVisible.value = true
+}
+
+const handleSaveDoctorDept = async () => {
+  if (!doctorDeptFormData.doctorId || !doctorDeptFormData.departmentId) {
+    ElMessage.warning('请选择医护人员和科室')
+    return
+  }
+
+  doctorDeptSaving.value = true
+  try {
+    if (editingDoctorDept.value) {
+      const res = await updateDoctorDepartment(editingDoctorDept.value.id, doctorDeptFormData.isPrimary)
+      if (res.code === 0) {
+        ElMessage.success('更新成功')
+        doctorDeptDialogVisible.value = false
+        loadDoctorDeptList()
+      } else {
+        ElMessage.error(res.message || '更新失败')
+      }
+    } else {
+      const res = await createDoctorDepartment(
+        doctorDeptFormData.doctorId,
+        doctorDeptFormData.departmentId,
+        doctorDeptFormData.isPrimary
+      )
+      if (res.code === 0) {
+        ElMessage.success('创建成功')
+        doctorDeptDialogVisible.value = false
+        loadDoctorDeptList()
+      } else {
+        ElMessage.error(res.message || '创建失败')
+      }
+    }
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    doctorDeptSaving.value = false
+  }
+}
+
+const handleDeleteDoctorDept = async (item: DoctorDepartmentManagementDto) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除"${item.doctorName}"在"${item.departmentName}"的关系吗？`,
+      '删除确认',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    const res = await deleteDoctorDepartment(item.id)
+    if (res.code === 0) {
+      ElMessage.success('删除成功')
+      loadDoctorDeptList()
+    } else {
+      ElMessage.error(res.message || '删除失败')
+    }
+  } catch {
+    // 用户取消
+  }
+}
 </script>
 
 <style>
@@ -1166,6 +1707,27 @@ const handleResetConfig = () => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.import-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.doctor-dept-section {
+  padding: 8px 0;
+}
+
+.doctor-dept-table {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.switch-hint {
+  margin-left: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .config-card {

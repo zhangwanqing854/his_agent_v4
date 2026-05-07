@@ -36,7 +36,7 @@ public class SyncController {
     public ResponseEntity<ApiResponse<SyncResultDto>> executeSync(
             @PathVariable Long configId,
             @RequestParam(required = false) String deptCode) {
-        SyncResultDto result = syncService.executeSync(configId, deptCode);
+        SyncResultDto result = syncService.executeSync(configId, deptCode, "MANUAL");
         
         if (result.getSuccess()) {
             return ResponseEntity.ok(ApiResponse.success(result.getMessage(), result));
@@ -47,8 +47,9 @@ public class SyncController {
     
     @PostMapping("/execute-batch")
     public ResponseEntity<ApiResponse<BatchSyncResultDto>> executeBatchSync(
-            @RequestParam(required = false) String deptCode) {
-        BatchSyncResultDto result = syncService.executeBatchSync(deptCode);
+            @RequestParam(required = false) String deptCode,
+            @RequestParam(required = false, defaultValue = "MANUAL_BATCH") String syncType) {
+        BatchSyncResultDto result = syncService.executeBatchSync(deptCode, syncType);
         
         if (result.getSuccess()) {
             return ResponseEntity.ok(ApiResponse.success(result.getMessage(), result));
@@ -109,6 +110,7 @@ public class SyncController {
             dto.setSuccessCount(result.getSuccessCount());
             dto.setSkipCount(result.getSkipCount());
             dto.setFailCount(result.getFailCount());
+            dto.setCount(result.getTotalCount());
             
             if ("SUCCESS".equals(result.getStatus())) {
                 return ResponseEntity.ok(ApiResponse.success(dto));
@@ -155,6 +157,7 @@ public class SyncController {
         private int successCount;
         private int skipCount;
         private int failCount;
+        private int count;
         
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
@@ -173,5 +176,8 @@ public class SyncController {
         
         public int getFailCount() { return failCount; }
         public void setFailCount(int failCount) { this.failCount = failCount; }
+        
+        public int getCount() { return count; }
+        public void setCount(int count) { this.count = count; }
     }
 }

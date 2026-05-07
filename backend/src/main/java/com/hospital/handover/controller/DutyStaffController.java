@@ -22,8 +22,9 @@ public class DutyStaffController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<DepartmentDutyStaffDto>>> getDutyStaffList(
-            @RequestHeader("Authorization") String authorization) {
-        Long departmentId = getCurrentDepartmentId(authorization);
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "X-Current-Department-Id", required = false) Long headerDeptId) {
+        Long departmentId = getCurrentDepartmentId(authorization, headerDeptId);
         List<DepartmentDutyStaffDto> list = dutyStaffService.getDutyStaffList(departmentId);
         return ResponseEntity.ok(ApiResponse.success(list));
     }
@@ -31,9 +32,10 @@ public class DutyStaffController {
     @PostMapping
     public ResponseEntity<ApiResponse<List<DepartmentDutyStaffDto>>> addDutyStaff(
             @RequestBody AddDutyStaffRequest request,
-            @RequestHeader("Authorization") String authorization) {
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "X-Current-Department-Id", required = false) Long headerDeptId) {
         try {
-            Long departmentId = getCurrentDepartmentId(authorization);
+            Long departmentId = getCurrentDepartmentId(authorization, headerDeptId);
             List<DepartmentDutyStaffDto> added = dutyStaffService.addDutyStaff(departmentId, request.getStaffIds());
             return ResponseEntity.ok(ApiResponse.success("添加成功", added));
         } catch (RuntimeException e) {
@@ -44,9 +46,10 @@ public class DutyStaffController {
     @DeleteMapping("/{staffId}")
     public ResponseEntity<ApiResponse<Void>> removeDutyStaff(
             @PathVariable Long staffId,
-            @RequestHeader("Authorization") String authorization) {
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "X-Current-Department-Id", required = false) Long headerDeptId) {
         try {
-            Long departmentId = getCurrentDepartmentId(authorization);
+            Long departmentId = getCurrentDepartmentId(authorization, headerDeptId);
             dutyStaffService.removeDutyStaff(departmentId, staffId);
             return ResponseEntity.ok(ApiResponse.success("移除成功", null));
         } catch (RuntimeException e) {
@@ -57,9 +60,10 @@ public class DutyStaffController {
     @PutMapping("/order")
     public ResponseEntity<ApiResponse<List<DepartmentDutyStaffDto>>> updateOrder(
             @RequestBody UpdateDutyStaffOrderRequest request,
-            @RequestHeader("Authorization") String authorization) {
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "X-Current-Department-Id", required = false) Long headerDeptId) {
         try {
-            Long departmentId = getCurrentDepartmentId(authorization);
+            Long departmentId = getCurrentDepartmentId(authorization, headerDeptId);
             List<DepartmentDutyStaffDto> updated = dutyStaffService.updateOrder(departmentId, request.getStaffIds());
             return ResponseEntity.ok(ApiResponse.success("排序更新成功", updated));
         } catch (RuntimeException e) {
@@ -69,9 +73,10 @@ public class DutyStaffController {
 
     @PostMapping("/initialize")
     public ResponseEntity<ApiResponse<List<DepartmentDutyStaffDto>>> initializeDutyStaff(
-            @RequestHeader("Authorization") String authorization) {
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "X-Current-Department-Id", required = false) Long headerDeptId) {
         try {
-            Long departmentId = getCurrentDepartmentId(authorization);
+            Long departmentId = getCurrentDepartmentId(authorization, headerDeptId);
             List<DepartmentDutyStaffDto> initialized = dutyStaffService.initializeDutyStaff(departmentId);
             return ResponseEntity.ok(ApiResponse.success("初始化成功", initialized));
         } catch (RuntimeException e) {
@@ -79,7 +84,10 @@ public class DutyStaffController {
         }
     }
 
-    private Long getCurrentDepartmentId(String authorization) {
+    private Long getCurrentDepartmentId(String authorization, Long headerDeptId) {
+        if (headerDeptId != null) {
+            return headerDeptId;
+        }
         String token = authorization.replace("Bearer ", "");
         return jwtUtil.getDepartmentIdFromToken(token);
     }

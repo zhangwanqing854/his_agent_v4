@@ -1,6 +1,27 @@
 import request from './request'
-import type { User, UserFilter, Role, Permission, Duty, RoleFormData } from '@/types/user'
-import { checkUsercodeExists } from '@/mock/user'
+import type { User, UserFilter, Role, Duty, RoleFormData } from '@/types/user'
+import {
+  checkUsercodeExists,
+  getUserList,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+  enableUser,
+  disableUser,
+  resetPassword,
+  checkUsernameExists,
+  getHisStaffList,
+  getUnlinkedHisStaffList,
+  getRoleList,
+  getRoleById,
+  createRole,
+  updateRole,
+  deleteRole,
+  checkRoleCodeExists,
+  getDutyList,
+  getDutiesByRoleId
+} from '@/mock/user'
 
 const USE_MOCK = false
 
@@ -55,6 +76,7 @@ export function createUserApi(data: {
       })
     }
     const user = createUser({
+      usercode: data.usercode,
       username: data.username,
       password: data.password,
       isSuperAdmin: false,
@@ -294,29 +316,6 @@ export function deleteRoleApi(id: number): Promise<ApiResponse<boolean>> {
   return request.delete(`/roles/${id}`)
 }
 
-export function fetchPermissionList(): Promise<ApiResponse<Permission[]>> {
-  if (USE_MOCK) {
-    return Promise.resolve({
-      code: 0,
-      message: 'success',
-      data: getPermissionList()
-    })
-  }
-  return request.get('/permissions')
-}
-
-export function fetchPermissionById(id: number): Promise<ApiResponse<Permission | null>> {
-  if (USE_MOCK) {
-    const perm = getPermissionById(id)
-    return Promise.resolve({
-      code: 0,
-      message: 'success',
-      data: perm
-    })
-  }
-  return request.get(`/permissions/${id}`)
-}
-
 export function fetchDutyList(): Promise<ApiResponse<Duty[]>> {
   if (USE_MOCK) {
     return Promise.resolve({
@@ -326,17 +325,6 @@ export function fetchDutyList(): Promise<ApiResponse<Duty[]>> {
     })
   }
   return request.get('/duties')
-}
-
-export function fetchDutiesByPermission(permissionId: number): Promise<ApiResponse<Duty[]>> {
-  if (USE_MOCK) {
-    return Promise.resolve({
-      code: 0,
-      message: 'success',
-      data: getDutiesByPermissionId(permissionId)
-    })
-  }
-  return request.get(`/permissions/${permissionId}/duties`)
 }
 
 export function fetchDutiesByRole(roleId: number): Promise<ApiResponse<Duty[]>> {

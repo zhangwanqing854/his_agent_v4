@@ -226,7 +226,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Check, Document, Setting, User, Microphone } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
-import { fetchHandoverStats, fetchDutyStaff, fetchHandoverPatientsForCreate, createHandover, fetchHandoverById, fetchHandoverPatients, updateHandoverPatient, type HandoverStatsDto, type DutyStaffDto, type HandoverPatientDto } from '@/api/handover'
+import { fetchHandoverStats, fetchDutyStaff, fetchDutyStaffList, fetchHandoverPatientsForCreate, createHandover, fetchHandoverById, fetchHandoverPatients, updateHandoverPatient, type HandoverStatsDto, type DutyStaffDto, type HandoverPatientDto } from '@/api/handover'
 import { fetchDeptPatientOverview, type DeptPatientOverview } from '@/api/deptPatientOverview'
 import type { HandoverForm } from '@/types/patient'
 import VoiceInputDialog from '@/components/handover/VoiceInputDialog.vue'
@@ -362,24 +362,38 @@ const openTestReport = (row: any) => {
 
 const loadDutyStaff = async () => {
   const deptId = authStore.currentDepartmentId
-  if (deptId) {
+  if (!deptId) return
+
+  // 1. 获取科室值班人员列表（候选队列）
+  try {
+    const listRes = await fetchDutyStaffList()
+    if (listRes.code === 0 && listRes.data && listRes.data.length > 0) {
+      doctorList.value = listRes.data.map(d => ({
+        id: d.staffId,
+        name: d.staffName
+      }))
+    } else {
+      noDutyStaffMsg.value = '请先配置科室值班人员'
+      return
+    }
+  } catch {
+    noDutyStaffMsg.value = '获取科室值班人员失败'
+    return
+  }
+
+  // 2. 获取当天值班医生（默认值）
+  try {
     const res = await fetchDutyStaff(deptId)
     if (res.code === 0 && res.data) {
       form.toDoctorId = res.data.staffId
-      doctorList.value = [{
-        id: res.data.staffId,
-        name: res.data.staffName
-      }]
-    } else if (res.code === 404) {
-      noDutyStaffMsg.value = res.message || '无排班数据，请手动选择接班医生'
-      const doctorsRes = await fetchHandoverPatientsForCreate(deptId)
-      if (doctorsRes.code === 0 && doctorsRes.data.length > 0) {
-        doctorList.value = [
-          { id: 25652, name: '李凯.测试' },
-          { id: 25461, name: '叶迅.测试' }
-        ]
-      }
+      noDutyStaffMsg.value = ''
+    } else {
+      noDutyStaffMsg.value = '请先排班，否则无法发起交班'
+      form.toDoctorId = null
     }
+  } catch {
+    noDutyStaffMsg.value = '请先排班，否则无法发起交班'
+    form.toDoctorId = null
   }
 }
 
@@ -502,6 +516,12 @@ const handlePreview = () => {
 }
 
 const handleSubmit = async () => {
+  // 新增：检查是否有排班
+  if (!form.toDoctorId && noDutyStaffMsg.value) {
+    ElMessage.warning(noDutyStaffMsg.value)
+    return
+  }
+
   if (!form.toDoctorId) {
     ElMessage.warning('请选择接班医生')
     return

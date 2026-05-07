@@ -94,6 +94,10 @@ public class SyncService {
     }
 
     public SyncResultDto executeSync(Long configId, String deptCode) {
+        return executeSync(configId, deptCode, "MANUAL");
+    }
+    
+    public SyncResultDto executeSync(Long configId, String deptCode, String syncType) {
         SyncResultDto result = new SyncResultDto();
         LocalDateTime startTime = LocalDateTime.now();
         long startMillis = System.currentTimeMillis();
@@ -269,7 +273,7 @@ public class SyncService {
 
         long durationMs = System.currentTimeMillis() - startMillis;
         
-        syncRecordService.saveSyncRecord(configId, startTime, LocalDateTime.now(), totalCount, insertCount, updateCount, skipCount, failCount, errorMessage, requestData, durationMs);
+        syncRecordService.saveSyncRecord(configId, startTime, LocalDateTime.now(), totalCount, insertCount, updateCount, skipCount, failCount, errorMessage, requestData, durationMs, syncType);
 
         result.setTotalCount(totalCount);
         result.setInsertCount(insertCount);
@@ -1170,6 +1174,10 @@ public class SyncService {
     }
     
     public BatchSyncResultDto executeBatchSync(String deptCode) {
+        return executeBatchSync(deptCode, "MANUAL_BATCH");
+    }
+    
+    public BatchSyncResultDto executeBatchSync(String deptCode, String syncType) {
         BatchSyncResultDto result = new BatchSyncResultDto();
         long startMillis = System.currentTimeMillis();
         
@@ -1194,7 +1202,7 @@ public class SyncService {
             itemResult.setConfigName(config.getConfigName());
             
             try {
-                SyncResultDto syncResult = executeSync(config.getId(), deptCode);
+                SyncResultDto syncResult = executeSync(config.getId(), deptCode, syncType);
                 
                 itemResult.setSuccess(syncResult.getSuccess());
                 itemResult.setMessage(syncResult.getMessage());

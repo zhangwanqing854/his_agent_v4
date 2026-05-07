@@ -11,7 +11,9 @@ public class UserInfo {
     private String name;
     private String role;
     private String avatar;
+    private Boolean isSuperAdmin;
     private List<DepartmentInfo> departments;
+    private List<DutyDto> duties;
     
     public UserInfo() {}
     
@@ -38,4 +40,10 @@ public class UserInfo {
     
     public List<DepartmentInfo> getDepartments() { return departments; }
     public void setDepartments(List<DepartmentInfo> departments) { this.departments = departments; }
+    
+    public Boolean getIsSuperAdmin() { return isSuperAdmin; }
+    public void setIsSuperAdmin(Boolean isSuperAdmin) { this.isSuperAdmin = isSuperAdmin; }
+    
+    public List<DutyDto> getDuties() { return duties; }
+    public void setDuties(List<DutyDto> duties) { this.duties = duties; }
 }
